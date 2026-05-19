@@ -70,7 +70,11 @@ class NullMetricsEmitter:
 
 
 class MetricsEmitter:
-    """Publish structured metrics to CloudWatch (synchronous; errors are logged only)."""
+    """Publish structured metrics to CloudWatch (synchronous boto3 calls).
+
+    :class:`SafeWriter` wraps this in :class:`BackgroundMetricsEmitter` when
+    ``enable_cloudwatch_metrics=True`` so the write loop is not blocked.
+    """
 
     def __init__(
         self,

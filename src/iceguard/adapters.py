@@ -10,6 +10,32 @@ from iceguard.s3_ops import delete_s3_uri
 logger = logging.getLogger(__name__)
 
 
+def iceberg_adapter(
+    *,
+    catalog: Any = None,
+    table_identifier: Optional[str] = None,
+    committed_files: Optional[Set[str]] = None,
+    s3_client: Any = None,
+) -> "IcebergAdapter":
+    """Build an :class:`IcebergAdapter` with optional PyIceberg committed-file discovery."""
+    return IcebergAdapter(
+        catalog=catalog,
+        table_identifier=table_identifier,
+        committed_files=committed_files,
+        s3_client=s3_client,
+    )
+
+
+def delta_adapter(
+    *,
+    log: Any = None,
+    committed_files: Optional[Set[str]] = None,
+    s3_client: Any = None,
+) -> "DeltaLakeAdapter":
+    """Build a :class:`DeltaLakeAdapter` (wire ``log`` for Delta transaction APIs)."""
+    return DeltaLakeAdapter(log=log, committed_files=committed_files, s3_client=s3_client)
+
+
 def _delete_paths_on_s3(file_paths: List[str], *, s3_client: Any = None) -> None:
     for path in file_paths:
         if not path.startswith("s3://"):
@@ -48,10 +74,12 @@ class IcebergAdapter:
         *,
         committed_files: Optional[Set[str]] = None,
         catalog: Any = None,
+        table_identifier: Optional[str] = None,
         s3_client: Any = None,
     ) -> None:
         self._committed: Set[str] = set(committed_files or ())
         self._catalog = catalog
+        self._table_identifier = table_identifier
         self._s3_client = s3_client
         self._deleted: List[str] = []
         self._active_transaction: Any = None
@@ -79,6 +107,18 @@ class IcebergAdapter:
         """Return object storage paths referenced by committed metadata."""
         if self._catalog is not None and hasattr(self._catalog, "list_committed_files"):
             return set(self._catalog.list_committed_files(table_path))
+        if self._catalog is not None and self._table_identifier:
+            try:
+                from iceguard.catalog_integrations import pyiceberg_committed_paths
+
+                return pyiceberg_committed_paths(self._catalog, self._table_identifier)
+            except ImportError:
+                logger.warning(
+                    "table_identifier set but pyiceberg not installed; "
+                    "orphan scan uses committed_files seed only"
+                )
+            except Exception as e:
+                logger.warning("PyIceberg committed-file listing failed: %s", e)
         return set(self._committed)
 
     def get_table_metadata_path(self, table_path: str) -> str:

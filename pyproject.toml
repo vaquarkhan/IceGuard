@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iceguard"
-version = "0.1.2"
+version = "0.1.3"
 description = "Reliability library for Spark-on-AWS-Lambda writes — prevents silent data loss with timeout-aware rollback, resumable checkpointing, and multi-Lambda coordination."
 readme = "README.md"
 license = "MIT"
@@ -37,6 +37,12 @@ dependencies = [
 [project.optional-dependencies]
 spark = [
     "pyspark>=3.4.0",
+]
+iceberg = [
+    "pyiceberg>=0.6.0",
+]
+delta = [
+    "delta-spark>=3.0.0",
 ]
 dev = [
     "hypothesis>=6.82.0",

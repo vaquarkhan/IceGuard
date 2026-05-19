@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable, List, Optional, Tuple
 
 from iceguard.adapters import TableFormatAdapter
+from iceguard.exceptions import IceGuardConfigError
 from iceguard.metrics import MetricsEmitterProtocol, NullMetricsEmitter
 from iceguard.models import DeleteResult, ScanResult
 from iceguard.s3_ops import S3_DELETE_BATCH_LIMIT, delete_s3_uri, list_parquet_candidates
@@ -33,12 +34,16 @@ class OrphanScanner:
         self._adapter = adapter
         self._retention_hours = retention_hours
         if batch_size > S3_DELETE_BATCH_LIMIT:
-            logger.warning(
-                "orphan batch_size %s exceeds S3 limit; using %s",
-                batch_size,
-                S3_DELETE_BATCH_LIMIT,
+            raise IceGuardConfigError(
+                message=(
+                    f"batch_size must be at most {S3_DELETE_BATCH_LIMIT} "
+                    f"(S3 delete_objects limit), got {batch_size}"
+                ),
+                field="batch_size",
+                value=batch_size,
+                valid_range=(1, S3_DELETE_BATCH_LIMIT),
             )
-        self._batch_size = min(batch_size, S3_DELETE_BATCH_LIMIT)
+        self._batch_size = batch_size
         if self._batch_size <= 0:
             raise ValueError("batch_size must be positive")
         self._metrics = metrics_emitter or NullMetricsEmitter()

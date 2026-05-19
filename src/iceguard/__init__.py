@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union
 
-from iceguard.adapters import DeltaLakeAdapter, IcebergAdapter, TableFormatAdapter
+from iceguard.adapters import (
+    DeltaLakeAdapter,
+    IcebergAdapter,
+    TableFormatAdapter,
+    delta_adapter,
+    iceberg_adapter,
+)
 from iceguard.checkpoint_store import CheckpointStore
 from iceguard.config import IceGuardConfig
 from iceguard.enums import TableFormat
@@ -17,11 +23,17 @@ from iceguard.exceptions import (
     IceGuardInitializationError,
     IceGuardRollbackError,
 )
+from iceguard.models import DeleteResult, ScanResult
+from iceguard.orphan_scanner import OrphanScanner
 from iceguard.safe_writer import SafeWriter
 from iceguard.spark_write import write_dataframe
 
+try:
+    from importlib.metadata import version as _pkg_version
 
-__version__ = "0.1.1"
+    __version__ = _pkg_version("iceguard")
+except Exception:
+    __version__ = "0.1.2"
 
 
 def protect(
@@ -32,10 +44,13 @@ def protect(
     idempotency_key: Optional[str] = None,
     s3_bucket: Optional[str] = None,
     coordinator_id: Optional[str] = None,
+    orphan_retention_hours: int = 72,
+    orphan_batch_size: int = 1000,
     enable_cloudwatch_metrics: bool = False,
     *,
     catalog: Any = None,
     delta_log: Any = None,
+    table_identifier: Optional[str] = None,
     adapter: Optional[TableFormatAdapter] = None,
 ) -> SafeWriter:
     """Return a configured :class:`SafeWriter` for chunked writes under Lambda protection.
@@ -45,11 +60,11 @@ def protect(
 
     Args:
         catalog: Optional Iceberg catalog with ``abort_transaction`` / ``delete_files``.
+        table_identifier: PyIceberg identifier (e.g. ``"db.table"``) for committed-file listing.
         delta_log: Optional Delta log handle with the same methods.
         adapter: Optional pre-built adapter (overrides catalog/delta_log).
+        coordinator_id: Prefix for idempotency keys in multi-Lambda coordinated runs.
     """
-    del coordinator_id
-
     if isinstance(table_format, TableFormat):
         tf_enum = table_format
     else:
@@ -69,33 +84,76 @@ def protect(
         checkpoint_interval=checkpoint_interval,
         table_format=tf_enum,
         s3_bucket=s3_bucket,
+        orphan_retention_hours=orphan_retention_hours,
+        orphan_batch_size=orphan_batch_size,
     )
     store: Optional[CheckpointStore] = None
     if s3_bucket:
         store = CheckpointStore(s3_bucket, config.s3_prefix)
 
+    resolved_key = idempotency_key
+    if coordinator_id:
+        base = resolved_key or str(getattr(lambda_context, "aws_request_id", "run"))
+        resolved_key = f"{coordinator_id}:{base}"
+
     if adapter is None:
         if tf_enum == TableFormat.DELTA:
             adapter = DeltaLakeAdapter(log=delta_log)
         else:
-            adapter = IcebergAdapter(catalog=catalog)
+            adapter = IcebergAdapter(catalog=catalog, table_identifier=table_identifier)
 
     return SafeWriter(
         lambda_context,
         config,
         adapter,
-        idempotency_key=idempotency_key,
+        idempotency_key=resolved_key,
         checkpoint_store=store,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
 
+def scan_orphans(
+    table_path: str,
+    adapter: TableFormatAdapter,
+    *,
+    retention_hours: int = 72,
+    batch_size: int = 1000,
+    delete: bool = False,
+    metrics_emitter: Optional[Any] = None,
+    s3_client: Optional[Any] = None,
+) -> Union[ScanResult, tuple[ScanResult, DeleteResult]]:
+    """Scan (and optionally delete) orphan Parquet files under ``table_path``.
+
+    For ``s3://`` paths, listing and deletion use boto3 by default.
+    """
+    scanner = OrphanScanner(
+        adapter,
+        retention_hours=retention_hours,
+        batch_size=batch_size,
+        metrics_emitter=metrics_emitter,
+        s3_client=s3_client,
+    )
+    scan = scanner.scan(table_path)
+    if not delete:
+        return scan
+    dr = scanner.delete_orphans(scan.orphan_files)
+    return scan, dr
+
+
 __all__ = [
     "protect",
     "write_dataframe",
+    "scan_orphans",
     "SafeWriter",
     "IceGuardConfig",
     "TableFormat",
+    "IcebergAdapter",
+    "DeltaLakeAdapter",
+    "iceberg_adapter",
+    "delta_adapter",
+    "OrphanScanner",
+    "ScanResult",
+    "DeleteResult",
     "IceGuardError",
     "IceGuardInitializationError",
     "IceGuardContextError",

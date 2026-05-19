@@ -380,12 +380,38 @@ with iceguard.protect(lambda_context, s3_bucket="my-checkpoint-bucket") as write
     )
 ```
 
+### Orphan cleanup
+
+```python
+from iceguard import protect, scan_orphans, iceberg_adapter
+
+adapter = iceberg_adapter(catalog=my_catalog, table_identifier="db.orders")
+scan = scan_orphans("s3://lake/db/orders", adapter, retention_hours=72)
+# scan, deleted = scan_orphans(..., delete=True)
+```
+
 ### Rollback and storage behavior
 
 - **Watchdog:** daemon thread; fires `IceGuardRollbackError` when time is at or below threshold (including on `__enter__` if already low).
-- **Adapters:** with `catalog` / `delta_log`, delegate abort/delete to your table library; otherwise **S3 paths in `track_paths` are deleted via boto3**.
-- **Orphan scan:** lists/deletes under `s3://` paths by default.
+- **Adapters:** with `catalog` / `delta_log`, delegate abort/delete to your table library; with `table_identifier` + `[iceberg]`, committed files come from PyIceberg; otherwise **S3 paths in `track_paths` are deleted via boto3**.
+- **Orphan scan:** `scan_orphans()` lists/deletes under `s3://` by default.
 - **Metrics:** off by default (`NullMetricsEmitter`); `enable_cloudwatch_metrics=True` uses a **background thread** so CloudWatch latency does not block writes.
+
+### Review checklist (what is fixed vs not)
+
+| Item | Status |
+|------|--------|
+| Watchdog init vs rollback | Fixed |
+| Property tests without AWS / fast | Fixed |
+| Honest README + `write_dataframe` | Fixed |
+| Async CloudWatch when enabled | Fixed |
+| S3 rollback deletes + default orphan scan | Fixed |
+| `orphan_batch_size` / scanner `batch_size` > 1000 | Rejected at config construction |
+| `IceGuardConfig` string `table_format` | Fixed |
+| Python 3.13 | Supported in `pyproject.toml` |
+| PyPI `pip install iceguard` | **Not published** — install from GitHub |
+| One-shot `df.write.save()` inside `protect()` only | **Not possible** without rewriting Spark; use chunked APIs |
+| Full Iceberg/Delta metadata abort without your catalog | **Requires** your catalog/log or PyIceberg `[iceberg]` extra |
 
 Run local checks: `python validation/run_all.py`
 
