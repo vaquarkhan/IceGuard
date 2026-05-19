@@ -274,7 +274,7 @@ stateDiagram-v2
 
 - CloudWatch metrics under the **`iceguard`** namespace.
 - Metric types: write outcomes, near-misses (rollback prevented loss), orphan scan summaries, checkpoint resume counts, coordination outcomes.
-- **Opt-in CloudWatch** via `enable_cloudwatch_metrics=True` on `protect()` (default is no-op metrics to avoid accidental AWS calls). Publish is synchronous; errors are logged only and do not raise.
+- **Opt-in CloudWatch** via `enable_cloudwatch_metrics=True` (default no-op). Publishes on a **background thread** so slow CloudWatch does not consume Lambda time on the write path.
 
 ### Table formats
 
@@ -322,45 +322,56 @@ pip install -e ".[dev]"
 
 ## Quick start
 
-IceGuard does **not** wrap a blocking `df.write.save(...)` call. The watchdog sets a flag that is checked only between **chunks** you define via `SafeWriter.write(...)`. Wrap each micro-batch (Spark slice, JDBC page, or custom loop) in `batch_writer` so rollback can run before Lambda `SIGKILL`.
+IceGuard does **not** protect a single blocking `df.write.save(...)`. Rollback is checked between **chunks** via `SafeWriter.write(...)` or `iceguard.write_dataframe(...)`.
+
+### Spark (recommended)
+
+Requires PySpark in your Lambda image:
 
 ```python
 import iceguard
 
 TABLE = "s3://lake/db/table"
 
-def write_slice(start: int, end: int) -> None:
-    # Example: df.filter(...).limit(end - start).write... per chunk
-    # Wire IcebergAdapter(catalog=your_catalog) for real abort/delete hooks.
-    pass
-
 with iceguard.protect(
     lambda_context,
     table_format="iceberg",
     s3_bucket="my-checkpoint-bucket",
+    catalog=my_iceberg_catalog,  # optional: abort_transaction / delete_files
     enable_cloudwatch_metrics=True,
 ) as writer:
-    writer.write(
-        path=TABLE,
-        total_records=1_000_000,
-        batch_writer=write_slice,
+    iceguard.write_dataframe(
+        writer,
+        df,
+        TABLE,
+        write_format="iceberg",
+        write_mode="append",
         track_paths=lambda s, e: list_new_parquet_paths(s, e),
     )
 ```
 
-**Spark on Lambda pattern:** partition the DataFrame (by row count or file batches), call `writer.write(...)` once per invocation (or once per chunk inside the invocation), and pass a `batch_writer` that runs `df_subset.write.format("iceberg").save(TABLE)` for that slice only. A single uninterruptible `save()` inside `protect()` without `writer.write()` will **not** trigger rollback.
+`write_dataframe` adds a row-id column, counts rows, and calls `writer.write()` so each Spark batch can be interrupted by the watchdog.
+
+### Manual chunks (no Spark helper)
 
 ```python
-# Minimal (no Spark import in iceguard itself):
-with iceguard.protect(lambda_context) as writer:
+with iceguard.protect(lambda_context, s3_bucket="my-checkpoint-bucket") as writer:
     writer.write(
         path="s3://lake/db/table",
         total_records=N,
         batch_writer=lambda start, end: my_chunked_write(start, end),
+        track_paths=lambda s, e: paths_written_in_chunk(s, e),
     )
 ```
 
-**Table adapters:** pass `IcebergAdapter(catalog=...)` or `DeltaLakeAdapter(log=...)` when constructing `SafeWriter` if you need catalog-backed `abort_transaction` / `delete_uncommitted_files`. Otherwise adapters record paths you supply via `track_paths`.
+### Rollback and storage behavior
+
+- **Watchdog:** daemon thread; fires `IceGuardRollbackError` when time is at or below threshold (including on `__enter__` if already low).
+- **Adapters:** with `catalog` / `delta_log`, delegate abort/delete to your table library; otherwise **S3 paths in `track_paths` are deleted via boto3**.
+- **Orphan scan:** lists/deletes under `s3://` paths by default.
+- **Metrics:** off by default (`NullMetricsEmitter`); `enable_cloudwatch_metrics=True` uses a **background thread** so CloudWatch latency does not block writes.
+
+Run local checks: `python validation/run_all.py`
 
 ---
 

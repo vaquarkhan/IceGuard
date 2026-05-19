@@ -5,7 +5,19 @@ from __future__ import annotations
 import logging
 from typing import Any, List, Optional, Protocol, Set
 
+from iceguard.s3_ops import delete_s3_uri
+
 logger = logging.getLogger(__name__)
+
+
+def _delete_paths_on_s3(file_paths: List[str], *, s3_client: Any = None) -> None:
+    for path in file_paths:
+        if not path.startswith("s3://"):
+            continue
+        try:
+            delete_s3_uri(path, s3_client=s3_client)
+        except Exception as e:
+            logger.warning("S3 delete failed for %s: %s", path, e)
 
 
 class TableFormatAdapter(Protocol):
@@ -36,9 +48,11 @@ class IcebergAdapter:
         *,
         committed_files: Optional[Set[str]] = None,
         catalog: Any = None,
+        s3_client: Any = None,
     ) -> None:
         self._committed: Set[str] = set(committed_files or ())
         self._catalog = catalog
+        self._s3_client = s3_client
         self._deleted: List[str] = []
         self._active_transaction: Any = None
 
@@ -57,6 +71,8 @@ class IcebergAdapter:
         """Remove uncommitted data files from storage."""
         if self._catalog is not None and hasattr(self._catalog, "delete_files"):
             self._catalog.delete_files(file_paths)
+        else:
+            _delete_paths_on_s3(file_paths, s3_client=self._s3_client)
         self._deleted.extend(file_paths)
 
     def list_committed_files(self, table_path: str) -> Set[str]:
@@ -78,9 +94,11 @@ class DeltaLakeAdapter:
         *,
         committed_files: Optional[Set[str]] = None,
         log: Any = None,
+        s3_client: Any = None,
     ) -> None:
         self._committed: Set[str] = set(committed_files or ())
         self._log = log
+        self._s3_client = s3_client
         self._deleted: List[str] = []
         self._active_transaction: Any = None
 
@@ -96,6 +114,8 @@ class DeltaLakeAdapter:
     def delete_uncommitted_files(self, file_paths: List[str]) -> None:
         if self._log is not None and hasattr(self._log, "delete_files"):
             self._log.delete_files(file_paths)
+        else:
+            _delete_paths_on_s3(file_paths, s3_client=self._s3_client)
         self._deleted.extend(file_paths)
 
     def list_committed_files(self, table_path: str) -> Set[str]:

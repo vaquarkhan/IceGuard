@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union
 
-from iceguard.adapters import DeltaLakeAdapter, IcebergAdapter
+from iceguard.adapters import DeltaLakeAdapter, IcebergAdapter, TableFormatAdapter
 from iceguard.checkpoint_store import CheckpointStore
 from iceguard.config import IceGuardConfig
 from iceguard.enums import TableFormat
@@ -18,9 +18,10 @@ from iceguard.exceptions import (
     IceGuardRollbackError,
 )
 from iceguard.safe_writer import SafeWriter
+from iceguard.spark_write import write_dataframe
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def protect(
@@ -32,12 +33,22 @@ def protect(
     s3_bucket: Optional[str] = None,
     coordinator_id: Optional[str] = None,
     enable_cloudwatch_metrics: bool = False,
+    *,
+    catalog: Any = None,
+    delta_log: Any = None,
+    adapter: Optional[TableFormatAdapter] = None,
 ) -> SafeWriter:
-    """Return a configured :class:`SafeWriter` for ``with iceguard.protect(ctx):`` usage.
+    """Return a configured :class:`SafeWriter` for chunked writes under Lambda protection.
 
-    ``coordinator_id`` is reserved for future coordinated-write wiring.
+    Use ``writer.write(...)`` or :func:`write_dataframe` for Spark. A bare
+    ``df.write.save()`` inside this context is **not** protected.
+
+    Args:
+        catalog: Optional Iceberg catalog with ``abort_transaction`` / ``delete_files``.
+        delta_log: Optional Delta log handle with the same methods.
+        adapter: Optional pre-built adapter (overrides catalog/delta_log).
     """
-    del coordinator_id  # reserved for multi-Lambda coordination wiring
+    del coordinator_id
 
     if isinstance(table_format, TableFormat):
         tf_enum = table_format
@@ -63,7 +74,11 @@ def protect(
     if s3_bucket:
         store = CheckpointStore(s3_bucket, config.s3_prefix)
 
-    adapter = DeltaLakeAdapter() if tf_enum == TableFormat.DELTA else IcebergAdapter()
+    if adapter is None:
+        if tf_enum == TableFormat.DELTA:
+            adapter = DeltaLakeAdapter(log=delta_log)
+        else:
+            adapter = IcebergAdapter(catalog=catalog)
 
     return SafeWriter(
         lambda_context,
@@ -77,6 +92,7 @@ def protect(
 
 __all__ = [
     "protect",
+    "write_dataframe",
     "SafeWriter",
     "IceGuardConfig",
     "TableFormat",

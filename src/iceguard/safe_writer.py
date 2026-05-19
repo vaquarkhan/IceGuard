@@ -17,7 +17,12 @@ from iceguard.exceptions import (
     IceGuardInitializationError,
     IceGuardRollbackError,
 )
-from iceguard.metrics import MetricsEmitter, MetricsEmitterProtocol, NullMetricsEmitter
+from iceguard.metrics import (
+    BackgroundMetricsEmitter,
+    MetricsEmitter,
+    MetricsEmitterProtocol,
+    NullMetricsEmitter,
+)
 from iceguard.models import CheckpointData, FileEntry
 from iceguard.watchdog import WatchdogThread
 
@@ -48,9 +53,14 @@ class SafeWriter:
         if metrics_emitter is not None:
             self._metrics: MetricsEmitterProtocol = metrics_emitter
         elif enable_cloudwatch_metrics:
-            self._metrics = MetricsEmitter()
+            self._metrics = BackgroundMetricsEmitter(MetricsEmitter())
         else:
             self._metrics = NullMetricsEmitter()
+        self._background_metrics: Optional[BackgroundMetricsEmitter] = (
+            self._metrics
+            if isinstance(self._metrics, BackgroundMetricsEmitter)
+            else None
+        )
         self._rollback = threading.Event()
         self._watchdog: Optional[WatchdogThread] = None
         self._resume_offset = 0
@@ -121,6 +131,8 @@ class SafeWriter:
     def __exit__(self, exc_type, exc, tb) -> None:
         if self._watchdog is not None:
             self._watchdog.disarm()
+        if self._background_metrics is not None:
+            self._background_metrics.close()
         return False
 
     def _persist_checkpoint(self, offset: int, path: str, manifest: List[FileEntry]) -> None:

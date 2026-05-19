@@ -1,10 +1,12 @@
-"""CloudWatch metrics emitter and no-op implementation."""
+"""CloudWatch metrics emitter, background wrapper, and no-op implementation."""
 
 from __future__ import annotations
 
 import logging
+import queue
+import threading
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Callable, Dict, List, Optional, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -173,4 +175,84 @@ class MetricsEmitter:
                 {"Outcome": outcome},
                 {"ParticipantCount": str(participant_count)},
             ],
+        )
+
+
+class BackgroundMetricsEmitter:
+    """Enqueue metric publishes on a daemon thread so the write path is not blocked."""
+
+    def __init__(self, delegate: MetricsEmitterProtocol) -> None:
+        self._delegate = delegate
+        self._queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._stop = threading.Event()
+        self._thread = threading.Thread(
+            target=self._worker, name="iceguard-metrics", daemon=True
+        )
+        self._thread.start()
+
+    def _enqueue(self, fn: Callable[..., None], *args: Any, **kwargs: Any) -> None:
+        self._queue.put((fn, args, kwargs))
+
+    def _worker(self) -> None:
+        while not self._stop.is_set():
+            try:
+                item = self._queue.get(timeout=0.25)
+            except queue.Empty:
+                continue
+            if item is None:
+                break
+            fn, args, kwargs = item
+            try:
+                fn(*args, **kwargs)
+            except Exception as e:
+                logger.error("Background metric publish failed: %s", e)
+
+    def close(self, timeout_s: float = 2.0) -> None:
+        """Drain queued metrics then stop the worker."""
+        self._stop.set()
+        self._queue.put(None)
+        if self._thread.is_alive():
+            self._thread.join(timeout=timeout_s)
+
+    def emit_write_outcome(
+        self, table_name: str, table_format: str, outcome: str, function_name: str
+    ) -> None:
+        self._enqueue(
+            self._delegate.emit_write_outcome,
+            table_name,
+            table_format,
+            outcome,
+            function_name,
+        )
+
+    def emit_near_miss(
+        self,
+        remaining_time_ms: int,
+        *,
+        threshold_ms: int = 0,
+        table_name: str = "",
+        function_name: str = "",
+    ) -> None:
+        self._enqueue(
+            self._delegate.emit_near_miss,
+            remaining_time_ms,
+            threshold_ms=threshold_ms,
+            table_name=table_name,
+            function_name=function_name,
+        )
+
+    def emit_orphan_scan(self, found: int, deleted: int, total_bytes: int) -> None:
+        self._enqueue(self._delegate.emit_orphan_scan, found, deleted, total_bytes)
+
+    def emit_checkpoint_resume(self, records_skipped: int) -> None:
+        self._enqueue(self._delegate.emit_checkpoint_resume, records_skipped)
+
+    def emit_coordination_outcome(
+        self, transaction_id: str, outcome: str, participant_count: int
+    ) -> None:
+        self._enqueue(
+            self._delegate.emit_coordination_outcome,
+            transaction_id,
+            outcome,
+            participant_count,
         )
