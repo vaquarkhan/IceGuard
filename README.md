@@ -2,7 +2,15 @@
 
 # IceGuard
 
-**Reliability library for Spark-on-AWS-Lambda (SoAL) lakehouse writes.** IceGuard wraps your write path with timeout-aware rollback, resumable checkpoints, orphan cleanup, multi-Lambda coordination, and CloudWatch metrics so a Lambda `SIGKILL` does not leave you with silent data loss.
+**Reliability library for Spark-on-AWS-Lambda (SoAL) lakehouse writes.** IceGuard protects **chunked** writes under Lambda timeouts: watchdog rollback, S3 checkpoints, orphan cleanup on `s3://` paths, and optional CloudWatch metrics.
+
+| Capability | Out of the box | You provide |
+|------------|----------------|-------------|
+| Timeout rollback between chunks | Yes (`SafeWriter.write`, `write_dataframe`) | PySpark in Lambda for Spark helper |
+| Checkpoint resume (S3) | Yes | S3 bucket name |
+| Delete uncommitted files on rollback | Yes for `s3://` paths in `track_paths` | Iceberg/Delta catalog for metadata abort |
+| Orphan scan/delete | Yes for `s3://` table paths | Committed file set via adapter |
+| Blocking single `df.write.save()` inside `protect()` only | **Not protected** | Use `write_dataframe` or `writer.write` |
 
 ---
 
@@ -306,16 +314,24 @@ iceguard.TableFormat
 
 ## Installation
 
+IceGuard is **not on PyPI yet**. Install from GitHub:
+
 ```bash
-pip install iceguard
+pip install "git+https://github.com/vaquarkhan/IceGuard.git"
 ```
 
-From source:
+With Spark support (PySpark in your environment):
+
+```bash
+pip install "git+https://github.com/vaquarkhan/IceGuard.git[spark]"
+```
+
+Development checkout:
 
 ```bash
 git clone git@github.com:vaquarkhan/IceGuard.git
 cd IceGuard
-pip install -e ".[dev]"
+pip install -e ".[dev,spark]"
 ```
 
 ---

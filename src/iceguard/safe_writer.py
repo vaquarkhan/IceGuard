@@ -234,11 +234,6 @@ class SafeWriter:
 
         if self._watchdog is not None:
             self._watchdog.disarm()
-        t0 = time.perf_counter()
-        while self._watchdog is not None and self._watchdog.is_armed():
-            if (time.perf_counter() - t0) > 0.55:
-                break
-            time.sleep(0.01)
 
         if self._store is not None:
             self._store.delete(self._resolve_idempotency_key())

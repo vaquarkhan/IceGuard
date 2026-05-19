@@ -178,3 +178,8 @@ class TestErrorMessages:
         msg = str(exc_info.value)
         assert "iceberg" in msg
         assert "delta" in msg
+
+    def test_orphan_batch_size_cannot_exceed_1000(self):
+        with pytest.raises(IceGuardConfigError) as exc_info:
+            IceGuardConfig(orphan_batch_size=1001)
+        assert exc_info.value.field == "orphan_batch_size"

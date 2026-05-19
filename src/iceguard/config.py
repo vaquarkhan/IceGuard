@@ -157,7 +157,8 @@ class IceGuardConfig:
             )
 
     def _validate_orphan_batch_size(self) -> None:
-        """Validate orphan_batch_size is a positive integer."""
+        """Validate orphan_batch_size is a positive integer (max 1000 for S3 API)."""
+        max_batch = 1000
         if not isinstance(self.orphan_batch_size, int) or self.orphan_batch_size <= 0:
             raise IceGuardConfigError(
                 message=(
@@ -166,6 +167,16 @@ class IceGuardConfig:
                 ),
                 field="orphan_batch_size",
                 value=self.orphan_batch_size,
+            )
+        if self.orphan_batch_size > max_batch:
+            raise IceGuardConfigError(
+                message=(
+                    f"orphan_batch_size must be at most {max_batch} (S3 delete_objects limit), "
+                    f"got {self.orphan_batch_size}"
+                ),
+                field="orphan_batch_size",
+                value=self.orphan_batch_size,
+                valid_range=(1, max_batch),
             )
 
     def _validate_coordinator_timeout_ms(self) -> None:
