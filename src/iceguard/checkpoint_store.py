@@ -1,4 +1,4 @@
-"""S3-backed checkpoint persistence (S3 Express One Zone compatible)."""
+"""S3-backed checkpoint persistence."""
 
 from __future__ import annotations
 

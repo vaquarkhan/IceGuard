@@ -6,6 +6,7 @@ from hypothesis import strategies as st
 
 from iceguard.adapters import IcebergAdapter
 from iceguard.config import IceGuardConfig
+from iceguard.metrics import MetricsEmitter
 from iceguard.safe_writer import SafeWriter
 
 
@@ -62,7 +63,15 @@ def test_property_4_resume_skips_first_n_records(n: int, total: int) -> None:
     )
     cs.save("r", cp)
     cfg = IceGuardConfig(s3_bucket="b", checkpoint_interval=1000)
-    sw = SafeWriter(_ctx(), cfg, IcebergAdapter(), checkpoint_store=cs, idempotency_key="r")
+    metrics = MagicMock(spec=MetricsEmitter)
+    sw = SafeWriter(
+        _ctx(),
+        cfg,
+        IcebergAdapter(),
+        checkpoint_store=cs,
+        idempotency_key="r",
+        metrics_emitter=metrics,
+    )
     processed = []
 
     with sw:
@@ -83,7 +92,8 @@ def test_property_5_checkpoint_writes_proportional_to_interval(total: int, inter
     store = MagicMock(spec=CheckpointStore)
     store.load.return_value = None
     cfg = IceGuardConfig(s3_bucket="x", checkpoint_interval=interval)
-    sw = SafeWriter(_ctx(), cfg, IcebergAdapter(), checkpoint_store=store)
+    metrics = MagicMock(spec=MetricsEmitter)
+    sw = SafeWriter(_ctx(), cfg, IcebergAdapter(), checkpoint_store=store, metrics_emitter=metrics)
     with sw:
         sw.write(
             path="s3://t",

@@ -237,14 +237,14 @@ IceGuard is **not** a replacement for Glue, EMR, or EKS. It is a **reliability l
 
 ### Resumable checkpointing
 
-- Persists **`CheckpointData`** (record offset, partition info, file manifest) to **S3** (compatible with S3 Express One Zone style low-latency buckets).
+- Persists **`CheckpointData`** (record offset, partition info, file manifest) to **S3** (standard S3 API; use a low-latency bucket in your account if needed).
 - Next invocation with the same idempotency key **skips already-processed records** and emits resume metrics.
 - Checkpoints at configurable **`checkpoint_interval`** (default every 5,000 records).
 - **Fail-open** on checkpoint write failures during the job (write continues; resume may be unavailable).
 
 ### Orphan file cleanup
 
-- Lists candidate files under a table path, compares against **committed** sets from table metadata via adapters.
+- For `s3://` table paths, **lists `.parquet` objects via boto3** by default; compares against committed sets from adapters.
 - Classifies orphans when age exceeds **retention period** (default 72 hours).
 - Deletes in batches of **up to 1,000** files per API call.
 - Permission errors are **logged and skipped**; scan continues.
@@ -274,7 +274,7 @@ stateDiagram-v2
 
 - CloudWatch metrics under the **`iceguard`** namespace.
 - Metric types: write outcomes, near-misses (rollback prevented loss), orphan scan summaries, checkpoint resume counts, coordination outcomes.
-- **Fire-and-forget** publishing: metric failures never block the write path.
+- **Opt-in CloudWatch** via `enable_cloudwatch_metrics=True` on `protect()` (default is no-op metrics to avoid accidental AWS calls). Publish is synchronous; errors are logged only and do not raise.
 
 ### Table formats
 
@@ -322,31 +322,45 @@ pip install -e ".[dev]"
 
 ## Quick start
 
+IceGuard does **not** wrap a blocking `df.write.save(...)` call. The watchdog sets a flag that is checked only between **chunks** you define via `SafeWriter.write(...)`. Wrap each micro-batch (Spark slice, JDBC page, or custom loop) in `batch_writer` so rollback can run before Lambda `SIGKILL`.
+
 ```python
 import iceguard
 
-with iceguard.protect(lambda_context):
-    # Your existing Spark write code here
-    df.write.format("iceberg").save("s3://lake/db/table")
-```
+TABLE = "s3://lake/db/table"
 
-With explicit options and chunked writes:
+def write_slice(start: int, end: int) -> None:
+    # Example: df.filter(...).limit(end - start).write... per chunk
+    # Wire IcebergAdapter(catalog=your_catalog) for real abort/delete hooks.
+    pass
 
-```python
 with iceguard.protect(
     lambda_context,
-    table_format="iceberg",       # or "delta"
-    rollback_threshold_ms=30_000,
-    checkpoint_interval=5_000,
-    s3_bucket="my-express-bucket",
-    idempotency_key="pipeline-batch-42",
+    table_format="iceberg",
+    s3_bucket="my-checkpoint-bucket",
+    enable_cloudwatch_metrics=True,
 ) as writer:
     writer.write(
-        path="s3://lake/db/table",
+        path=TABLE,
         total_records=1_000_000,
-        batch_writer=lambda start, end: write_slice(start, end),
+        batch_writer=write_slice,
+        track_paths=lambda s, e: list_new_parquet_paths(s, e),
     )
 ```
+
+**Spark on Lambda pattern:** partition the DataFrame (by row count or file batches), call `writer.write(...)` once per invocation (or once per chunk inside the invocation), and pass a `batch_writer` that runs `df_subset.write.format("iceberg").save(TABLE)` for that slice only. A single uninterruptible `save()` inside `protect()` without `writer.write()` will **not** trigger rollback.
+
+```python
+# Minimal (no Spark import in iceguard itself):
+with iceguard.protect(lambda_context) as writer:
+    writer.write(
+        path="s3://lake/db/table",
+        total_records=N,
+        batch_writer=lambda start, end: my_chunked_write(start, end),
+    )
+```
+
+**Table adapters:** pass `IcebergAdapter(catalog=...)` or `DeltaLakeAdapter(log=...)` when constructing `SafeWriter` if you need catalog-backed `abort_transaction` / `delete_uncommitted_files`. Otherwise adapters record paths you supply via `track_paths`.
 
 ---
 

@@ -1,18 +1,74 @@
-"""CloudWatch metrics emitter (fire-and-forget)."""
+"""CloudWatch metrics emitter and no-op implementation."""
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_NAMESPACE = "iceguard"
 
 
+@runtime_checkable
+class MetricsEmitterProtocol(Protocol):
+    """Metrics surface used by SafeWriter, OrphanScanner, and Coordinator."""
+
+    def emit_write_outcome(
+        self, table_name: str, table_format: str, outcome: str, function_name: str
+    ) -> None: ...
+
+    def emit_near_miss(
+        self,
+        remaining_time_ms: int,
+        *,
+        threshold_ms: int = 0,
+        table_name: str = "",
+        function_name: str = "",
+    ) -> None: ...
+
+    def emit_orphan_scan(self, found: int, deleted: int, total_bytes: int) -> None: ...
+
+    def emit_checkpoint_resume(self, records_skipped: int) -> None: ...
+
+    def emit_coordination_outcome(
+        self, transaction_id: str, outcome: str, participant_count: int
+    ) -> None: ...
+
+
+class NullMetricsEmitter:
+    """No-op metrics (default for SafeWriter to avoid accidental AWS calls)."""
+
+    def emit_write_outcome(
+        self, table_name: str, table_format: str, outcome: str, function_name: str
+    ) -> None:
+        pass
+
+    def emit_near_miss(
+        self,
+        remaining_time_ms: int,
+        *,
+        threshold_ms: int = 0,
+        table_name: str = "",
+        function_name: str = "",
+    ) -> None:
+        pass
+
+    def emit_orphan_scan(self, found: int, deleted: int, total_bytes: int) -> None:
+        pass
+
+    def emit_checkpoint_resume(self, records_skipped: int) -> None:
+        pass
+
+    def emit_coordination_outcome(
+        self, transaction_id: str, outcome: str, participant_count: int
+    ) -> None:
+        pass
+
+
 class MetricsEmitter:
-    """Publish structured metrics to CloudWatch under the iceguard namespace."""
+    """Publish structured metrics to CloudWatch (synchronous; errors are logged only)."""
 
     def __init__(
         self,

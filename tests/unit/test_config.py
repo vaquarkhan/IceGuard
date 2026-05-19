@@ -73,6 +73,12 @@ class TestTableFormatValidation:
         config = IceGuardConfig(table_format=TableFormat.DELTA)
         assert config.table_format == TableFormat.DELTA
 
+    def test_string_table_format_coerced_like_protect(self):
+        config = IceGuardConfig(table_format="iceberg")
+        assert config.table_format == TableFormat.ICEBERG
+        config2 = IceGuardConfig(table_format="delta")
+        assert config2.table_format == TableFormat.DELTA
+
     def test_invalid_string_raises_error(self):
         with pytest.raises(IceGuardConfigError) as exc_info:
             IceGuardConfig(table_format="parquet")  # type: ignore[arg-type]

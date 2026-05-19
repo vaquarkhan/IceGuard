@@ -30,15 +30,17 @@ class WatchdogThread:
         self._callback_lock = threading.Lock()
         self._callback_done = False
         self._thread: Optional[threading.Thread] = None
+        self._ever_started = False
 
     def start(self) -> None:
         """Start the daemon watchdog thread."""
         self._thread = threading.Thread(target=self._run, name="iceguard-watchdog", daemon=True)
         self._thread.start()
+        self._ever_started = True
 
     def started_ok(self) -> bool:
-        """True if the thread was created and is running."""
-        return self._thread is not None and self._thread.is_alive()
+        """True if start() was called (thread may have already exited after firing)."""
+        return self._ever_started
 
     def _invoke_callback_once(self) -> None:
         with self._callback_lock:

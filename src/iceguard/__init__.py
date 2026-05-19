@@ -31,6 +31,7 @@ def protect(
     idempotency_key: Optional[str] = None,
     s3_bucket: Optional[str] = None,
     coordinator_id: Optional[str] = None,
+    enable_cloudwatch_metrics: bool = False,
 ) -> SafeWriter:
     """Return a configured :class:`SafeWriter` for ``with iceguard.protect(ctx):`` usage.
 
@@ -70,6 +71,7 @@ def protect(
         adapter,
         idempotency_key=idempotency_key,
         checkpoint_store=store,
+        enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
 

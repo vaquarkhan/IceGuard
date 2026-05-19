@@ -17,7 +17,7 @@ from iceguard.exceptions import (
     IceGuardInitializationError,
     IceGuardRollbackError,
 )
-from iceguard.metrics import MetricsEmitter
+from iceguard.metrics import MetricsEmitter, MetricsEmitterProtocol, NullMetricsEmitter
 from iceguard.models import CheckpointData, FileEntry
 from iceguard.watchdog import WatchdogThread
 
@@ -36,7 +36,8 @@ class SafeWriter:
         idempotency_key: Optional[str] = None,
         table_path: str = "",
         checkpoint_store: Optional[CheckpointStore] = None,
-        metrics_emitter: Optional[MetricsEmitter] = None,
+        metrics_emitter: Optional[MetricsEmitterProtocol] = None,
+        enable_cloudwatch_metrics: bool = False,
     ) -> None:
         self._ctx = lambda_context
         self._config = config
@@ -44,7 +45,12 @@ class SafeWriter:
         self._idempotency_key = idempotency_key
         self._table_path = table_path
         self._store = checkpoint_store
-        self._metrics = metrics_emitter or MetricsEmitter()
+        if metrics_emitter is not None:
+            self._metrics: MetricsEmitterProtocol = metrics_emitter
+        elif enable_cloudwatch_metrics:
+            self._metrics = MetricsEmitter()
+        else:
+            self._metrics = NullMetricsEmitter()
         self._rollback = threading.Event()
         self._watchdog: Optional[WatchdogThread] = None
         self._resume_offset = 0
@@ -104,6 +110,12 @@ class SafeWriter:
         time.sleep(0.02)
         if not self._watchdog.started_ok():
             raise IceGuardInitializationError("Watchdog thread failed to start")
+        if self._rollback.is_set():
+            try:
+                remaining = int(self._ctx.get_remaining_time_in_millis())
+            except Exception:
+                remaining = 0
+            self._handle_rollback(self._table_path or "unknown", remaining)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:

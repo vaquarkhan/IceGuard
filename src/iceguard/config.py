@@ -5,10 +5,12 @@ at construction time, raising IceGuardConfigError for invalid inputs.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from iceguard.enums import TableFormat
 from iceguard.exceptions import IceGuardConfigError
+
+TableFormatInput = Union[TableFormat, str]
 
 
 @dataclass(frozen=True)
@@ -24,7 +26,7 @@ class IceGuardConfig:
             rollback is triggered. Must be in [5000, 300000].
         checkpoint_interval: Number of records between checkpoint persists.
         table_format: The open table format to use (Iceberg or Delta).
-        s3_bucket: S3 Express One Zone bucket for checkpoint storage.
+        s3_bucket: S3 bucket for checkpoint storage.
         s3_prefix: Key prefix for checkpoint objects.
         orphan_retention_hours: Hours before an uncommitted file is
             considered an orphan.
@@ -37,7 +39,7 @@ class IceGuardConfig:
 
     rollback_threshold_ms: int = 30000
     checkpoint_interval: int = 5000
-    table_format: TableFormat = TableFormat.ICEBERG
+    table_format: TableFormatInput = TableFormat.ICEBERG
     s3_bucket: Optional[str] = None
     s3_prefix: str = "iceguard/checkpoints/"
     orphan_retention_hours: int = 72
@@ -47,6 +49,7 @@ class IceGuardConfig:
 
     def __post_init__(self) -> None:
         """Validate all configuration values at construction time."""
+        self._coerce_table_format()
         self._validate_rollback_threshold()
         self._validate_table_format()
         self._validate_checkpoint_interval()
@@ -54,6 +57,37 @@ class IceGuardConfig:
         self._validate_orphan_batch_size()
         self._validate_coordinator_timeout_ms()
         self._validate_watchdog_poll_interval_ms()
+
+    def _coerce_table_format(self) -> None:
+        """Accept TableFormat enum or string values like protect() does."""
+        if isinstance(self.table_format, TableFormat):
+            return
+        if isinstance(self.table_format, str):
+            try:
+                coerced = TableFormat(self.table_format.lower())
+            except ValueError as e:
+                supported = [fmt.value for fmt in TableFormat]
+                raise IceGuardConfigError(
+                    message=(
+                        f"table_format must be one of {supported}, "
+                        f"got {self.table_format!r}"
+                    ),
+                    field="table_format",
+                    value=self.table_format,
+                    valid_range=supported,
+                ) from e
+            object.__setattr__(self, "table_format", coerced)
+            return
+        supported = [fmt.value for fmt in TableFormat]
+        raise IceGuardConfigError(
+            message=(
+                f"table_format must be a TableFormat enum value or string, "
+                f"got {self.table_format!r}. Supported formats: {supported}"
+            ),
+            field="table_format",
+            value=self.table_format,
+            valid_range=supported,
+        )
 
     def _validate_rollback_threshold(self) -> None:
         """Validate rollback_threshold_ms is in [5000, 300000]."""
