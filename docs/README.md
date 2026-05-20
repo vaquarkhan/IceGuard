@@ -2,7 +2,7 @@
 
 | Document | Contents |
 |----------|----------|
-| [ROADMAP.md](ROADMAP.md) | 10/10 roadmap and status |
+| [STATUS.md](STATUS.md) | Release done/partial status and PyPI publish steps |
 | [API.md](API.md) | Complete API reference |
 | [installation.md](installation.md) | PyPI, GitHub, extras (`spark`, `iceberg`, `hudi`, `otel`) |
 | [s3-express-one-zone.md](s3-express-one-zone.md) | Express directory bucket validation |

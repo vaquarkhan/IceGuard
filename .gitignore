@@ -10,7 +10,7 @@ venv/
 ENV/
 env/
 
-# Packaging / build
+# Packaging / build (not for end users via pip)
 build/
 dist/
 *.egg-info/
@@ -35,28 +35,34 @@ dmypy.json
 # IDE / OS
 .idea/
 .vscode/
+.cursor/
 *.swp
 *~
 .DS_Store
 Thumbs.db
 
-# Local env files
+# Local env and secrets (never commit)
 .env
 .env.*
 !.env.example
 
-# Kiro IDE specs (local planning; not part of the published package)
+# Internal planning / agent (maintainers only — not for public repo)
 .kiro/
+docs/ROADMAP.md
+agent-transcripts/
 
-# Misc local artifacts
-*.log
-coverage.xml
-
-# Terraform
+# Terraform local state and secrets
 .terraform/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+!**/terraform.tfvars.example
 
-# CDK
+# CDK synth output
 examples/cdk/cdk.out/
+
+# Misc local artifacts
+*.log
+coverage.xml

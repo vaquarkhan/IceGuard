@@ -16,9 +16,11 @@
 ## Install
 
 ```bash
+# After PyPI publish (see docs/STATUS.md):
 pip install iceguard
-# or until published:
-pip install "git+https://github.com/vaquarkhan/IceGuard.git"
+
+# From GitHub until then:
+pip install "git+https://github.com/vaquarkhan/IceGuard.git@v0.2.2"
 ```
 
 Extras: `[spark]`, `[iceberg]`, `[hudi]`, `[otel]`, `[dev]`
@@ -59,9 +61,9 @@ pytest tests --cov=iceguard
 python validation/run_all.py
 ```
 
-## Roadmap
+## Release status and PyPI
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the 10/10 plan and current status.
+See [docs/STATUS.md](docs/STATUS.md) for **done / partial** checklist and **manual PyPI publish** steps (v0.2.2).
 
 ## Documentation
 
