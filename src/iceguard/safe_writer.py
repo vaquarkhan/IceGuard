@@ -46,6 +46,7 @@ class SafeWriter:
         metrics_emitter: Optional[MetricsEmitterProtocol] = None,
         enable_cloudwatch_metrics: bool = False,
         enable_opentelemetry_metrics: bool = False,
+        dlq_queue_url: Optional[str] = None,
     ) -> None:
         self._ctx = lambda_context
         self._config = config
@@ -54,6 +55,7 @@ class SafeWriter:
         self._table_path = table_path
         self._store = checkpoint_store
         self._durable_bridge = durable_bridge
+        self._dlq_queue_url = dlq_queue_url
         if metrics_emitter is not None:
             self._metrics: MetricsEmitterProtocol = metrics_emitter
         elif enable_opentelemetry_metrics:
@@ -209,6 +211,17 @@ class SafeWriter:
         self._metrics.emit_write_outcome(
             path, self._config.table_format.value, "rollback", self._function_name
         )
+        if self._dlq_queue_url:
+            from iceguard.dlq import publish_rollback_event
+
+            publish_rollback_event(
+                self._dlq_queue_url,
+                table_path=path,
+                remaining_ms=remaining_ms,
+                threshold_ms=self._config.rollback_threshold_ms,
+                function_name=self._function_name,
+                idempotency_key=self._resolve_idempotency_key(),
+            )
         raise IceGuardRollbackError(remaining_ms, self._config.rollback_threshold_ms)
 
     def write(

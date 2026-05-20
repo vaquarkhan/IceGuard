@@ -54,6 +54,30 @@ def list_parquet_candidates(
     return out
 
 
+def validate_express_one_zone_bucket(
+    bucket_name: str,
+    *,
+    s3_client: Optional[Any] = None,
+) -> bool:
+    """Return True if the bucket appears to be S3 Express One Zone (directory bucket).
+
+    Directory bucket names end with ``--azid--x-s3``. IceGuard uses standard boto3
+    S3 APIs; configure the client with the Express endpoint for your AZ
+    (see docs/s3-express-one-zone.md).
+    """
+    if bucket_name.endswith("--x-s3"):
+        return True
+    if s3_client is None:
+        import boto3
+
+        s3_client = boto3.client("s3")
+    try:
+        loc = s3_client.get_bucket_location(Bucket=bucket_name)
+        return "express" in str(loc).lower() or "--x-s3" in str(loc.get("LocationConstraint", ""))
+    except Exception:
+        return False
+
+
 def delete_s3_uri(uri: str, *, s3_client: Optional[Any] = None) -> None:
     """Delete a single object given an s3:// URI."""
     bucket, key = parse_s3_uri(uri, directory_prefix=False)

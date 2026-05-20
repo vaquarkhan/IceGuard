@@ -43,39 +43,9 @@ class CheckpointData:
     @classmethod
     def from_json(cls, raw: str, *, file_path: str = "<memory>") -> CheckpointData:
         """Deserialize checkpoint from JSON; raises CheckpointCorruptionError on invalid data."""
-        from iceguard.exceptions import CheckpointCorruptionError
+        from iceguard.schema_evolution import load_checkpoint_migrated
 
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as e:
-            raise CheckpointCorruptionError(file_path, f"invalid JSON: {e}") from e
-        try:
-            manifest_raw = data["file_manifest"]
-            files = [
-                FileEntry(
-                    path=str(f["path"]),
-                    size_bytes=int(f["size_bytes"]),
-                    record_count=int(f["record_count"]),
-                    checksum=str(f["checksum"]),
-                )
-                for f in manifest_raw
-            ]
-            return cls(
-                idempotency_key=str(data["idempotency_key"]),
-                table_path=str(data["table_path"]),
-                table_format=str(data["table_format"]),
-                record_offset=int(data["record_offset"]),
-                partition_info=dict(data["partition_info"]),
-                file_manifest=files,
-                created_at=str(data["created_at"]),
-                lambda_function_name=str(data["lambda_function_name"]),
-                lambda_request_id=str(data["lambda_request_id"]),
-                schema_version=int(data.get("schema_version", 1)),
-            )
-        except (KeyError, TypeError, ValueError) as e:
-            raise CheckpointCorruptionError(
-                file_path, f"checkpoint schema mismatch: {e}"
-            ) from e
+        return load_checkpoint_migrated(raw, file_path=file_path)
 
 
 @dataclass

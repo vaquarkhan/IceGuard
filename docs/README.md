@@ -2,7 +2,10 @@
 
 | Document | Contents |
 |----------|----------|
+| [ROADMAP.md](ROADMAP.md) | 10/10 roadmap and status |
+| [API.md](API.md) | Complete API reference |
 | [installation.md](installation.md) | PyPI, GitHub, extras (`spark`, `iceberg`, `hudi`, `otel`) |
+| [s3-express-one-zone.md](s3-express-one-zone.md) | Express directory bucket validation |
 | [architecture.md](architecture.md) | Components, data flow, checkpoint model |
 | [api-reference.md](api-reference.md) | `protect`, `write_dataframe`, adapters, config |
 | [terraform.md](terraform.md) | Modular Terraform, dev/prod environments |

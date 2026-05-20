@@ -23,17 +23,27 @@ class CheckpointStore:
         prefix: str = "iceguard/checkpoints/",
         *,
         s3_client: Optional[Any] = None,
+        kms_key_id: Optional[str] = None,
     ) -> None:
         if not bucket or not isinstance(bucket, str):
             raise ValueError("bucket must be a non-empty string")
         self._bucket = bucket
         self._prefix = prefix if prefix.endswith("/") else prefix + "/"
+        self._kms_key_id = kms_key_id
         if s3_client is not None:
             self._client = s3_client
         else:
             import boto3
 
             self._client = boto3.client("s3")
+
+    def _encryption_args(self) -> dict:
+        if not self._kms_key_id:
+            return {}
+        return {
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": self._kms_key_id,
+        }
 
     def _full_key(self, key: str) -> str:
         return f"{self._prefix}{key.lstrip('/')}"
@@ -50,6 +60,7 @@ class CheckpointStore:
                 Key=self._full_key(key),
                 Body=body,
                 ContentType="application/json",
+                **self._encryption_args(),
             )
         except Exception as e:
             logger.warning(
@@ -104,6 +115,7 @@ class CheckpointStore:
                 Key=self._full_key(key),
                 Body=raw,
                 ContentType="application/json",
+                **self._encryption_args(),
             )
         except Exception as e:
             if fail_open:

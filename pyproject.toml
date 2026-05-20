@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iceguard"
-version = "0.2.1"
+version = "0.2.2"
 description = "Reliability library for Spark-on-AWS-Lambda lakehouse writes with timeout rollback, checkpoints, and orphan cleanup."
 readme = "README.md"
 license = "MIT"
@@ -90,6 +90,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "spark: requires PySpark (optional integration)",
+    "aws: requires live AWS credentials and ICEGUARD_AWS_E2E=1",
 ]
 
 [tool.coverage.run]

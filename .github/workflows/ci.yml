@@ -10,8 +10,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,9 +21,11 @@ jobs:
       - name: Install package and dev deps
         run: pip install -e ".[dev]"
       - name: Run tests with coverage
-        run: pytest tests --cov=iceguard --cov-report=term-missing -q
+        run: pytest tests --cov=iceguard --cov-report=term-missing -q -m "not aws"
       - name: Validation script
         run: python validation/run_all.py
+      - name: Benchmark checkpoint overhead
+        run: python benchmarks/checkpoint_overhead.py
 
   build:
     runs-on: ubuntu-latest

@@ -59,8 +59,13 @@ pytest tests --cov=iceguard
 python validation/run_all.py
 ```
 
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the 10/10 plan and current status.
+
 ## Documentation
 
+- [API reference (complete)](docs/API.md)
 - [Installation](docs/installation.md)
 - [Architecture](docs/architecture.md)
 - [Terraform](docs/terraform.md)

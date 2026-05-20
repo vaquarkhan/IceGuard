@@ -15,7 +15,10 @@ from iceguard.adapters import (
 )
 from iceguard.checkpoint_store import CheckpointStore
 from iceguard.config import IceGuardConfig
+from iceguard.coordinator_leader import S3LeaderLock
+from iceguard.dlq import publish_rollback_event
 from iceguard.durable import DurableCheckpointBridge
+from iceguard.glue_catalog import GlueCatalogAdapter, glue_adapter
 from iceguard.enums import TableFormat
 from iceguard.exceptions import (
     CheckpointCorruptionError,
@@ -58,6 +61,10 @@ def protect(
     table_identifier: Optional[str] = None,
     adapter: Optional[TableFormatAdapter] = None,
     durable_context: Optional[Any] = None,
+    dlq_queue_url: Optional[str] = None,
+    checkpoint_kms_key_id: Optional[str] = None,
+    glue_database: Optional[str] = None,
+    glue_table: Optional[str] = None,
 ) -> SafeWriter:
     """Return a configured :class:`SafeWriter` for chunked writes under Lambda protection.
 
@@ -88,7 +95,11 @@ def protect(
     )
     store: Optional[CheckpointStore] = None
     if s3_bucket:
-        store = CheckpointStore(s3_bucket, config.s3_prefix)
+        store = CheckpointStore(
+            s3_bucket,
+            config.s3_prefix,
+            kms_key_id=checkpoint_kms_key_id,
+        )
 
     resolved_key = idempotency_key
     if coordinator_id:
@@ -96,7 +107,9 @@ def protect(
         resolved_key = f"{coordinator_id}:{base}"
 
     if adapter is None:
-        if tf_enum == TableFormat.DELTA:
+        if glue_database and glue_table:
+            adapter = glue_adapter(glue_database, glue_table, catalog=catalog)
+        elif tf_enum == TableFormat.DELTA:
             adapter = DeltaLakeAdapter(log=delta_log)
         elif tf_enum == TableFormat.HUDI:
             adapter = HudiAdapter(commit_client=hudi_commit_client)
@@ -116,6 +129,7 @@ def protect(
         durable_bridge=bridge,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
         enable_opentelemetry_metrics=enable_opentelemetry_metrics,
+        dlq_queue_url=dlq_queue_url,
     )
 
 
@@ -157,7 +171,11 @@ __all__ = [
     "iceberg_adapter",
     "delta_adapter",
     "hudi_adapter",
+    "glue_adapter",
+    "GlueCatalogAdapter",
     "DurableCheckpointBridge",
+    "S3LeaderLock",
+    "publish_rollback_event",
     "OrphanScanner",
     "ScanResult",
     "DeleteResult",
