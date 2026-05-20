@@ -45,16 +45,18 @@ Context manager from `protect()`.
 - `IceGuardInitializationError` — watchdog failed to start
 - `IceGuardContextError` — invalid Lambda context
 
-### `write_dataframe(writer, df, path, ...)`
+### `write_dataframe(writer, df, path=None, *, table_identifier=None, ...)`
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| `path` | `None` | Storage path for `.save(path)` and S3 tracking (at least one of `path` / `table_identifier` required) |
+| `table_identifier` | `None` | Catalog name for `.insertInto()` (e.g. `glue_catalog.db.table`) |
 | `write_format` | `"iceberg"` | Spark format |
 | `write_mode` | `"append"` | Spark mode |
 | `write_options` | `{}` | Spark `.options()` |
 | `row_id_column` | `"_iceguard_row_id"` | Chunk slice column |
 | `track_paths` | None | Per-chunk path callback |
-| `auto_track_s3_paths` | `True` | Diff S3 Parquet per chunk |
+| `auto_track_s3_paths` | `True` | Diff S3 Parquet per chunk when `path` is `s3://` |
 
 ### `scan_orphans(table_path, adapter, *, retention_hours=72, batch_size=1000, delete=False)`
 

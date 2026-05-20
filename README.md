@@ -69,7 +69,9 @@ with iceguard.protect(context, s3_bucket="my-checkpoints") as writer:
     )
 ```
 
-Spark: `iceguard.write_dataframe(writer, df, path, write_format="iceberg")`
+Spark (path): `iceguard.write_dataframe(writer, df, "s3://lake/db/table", write_format="iceberg")`
+
+Spark (Glue/catalog): `iceguard.write_dataframe(writer, df, table_identifier="glue_catalog.db.table", path="s3://...")`
 
 CLI: `iceguard orphans scan s3://lake/db/table --json`
 

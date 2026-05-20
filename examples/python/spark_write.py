@@ -19,7 +19,8 @@ def handler(event, context):
         iceguard.write_dataframe(
             writer,
             df,
-            event["table_path"],
+            path=event.get("table_path"),
+            table_identifier=event.get("table_identifier"),
             write_format="iceberg",
             write_mode="append",
             track_paths=event.get("track_paths_callable"),

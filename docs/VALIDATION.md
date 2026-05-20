@@ -48,6 +48,20 @@ If you still see `URL dependencies must be a string`, pull latest `main` or chec
 
 **Fixed.** `test_pyspark_write_dataframe_respects_checkpoint_interval` is skipped when `sys.platform == "win32"` and `HADOOP_HOME` is unset.
 
+## Bug #13 — `write_dataframe` + catalog-managed tables
+
+**Fixed.** Catalog tables (Glue, Hive Metastore) cannot be written with `.save(s3://...)`. Pass `table_identifier="glue_catalog.db.table"` to use `.insertInto()` per chunk. Path remains optional for S3 rollback tracking.
+
+```python
+iceguard.write_dataframe(
+    writer,
+    df,
+    path=event.get("warehouse_path"),
+    table_identifier="glue_catalog.db.events",
+    write_format="iceberg",
+)
+```
+
 ## Re-run validation
 
 ```bash

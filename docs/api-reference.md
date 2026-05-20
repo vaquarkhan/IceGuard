@@ -28,9 +28,12 @@ writer.write(
 )
 ```
 
-## `iceguard.write_dataframe(writer, df, path, ...)`
+## `iceguard.write_dataframe(writer, df, path=None, *, table_identifier=None, ...)`
 
 Requires PySpark. Splits DataFrame into checkpoint-sized Spark writes.
+
+- **Path-based table:** pass `path="s3://..."` → each chunk uses `.save(path)`.
+- **Catalog-managed table:** pass `table_identifier="glue_catalog.db.table"` → each chunk uses `.insertInto(table_identifier)`. Optionally pass `path` as the warehouse URI for S3 orphan tracking.
 
 ## `iceguard.scan_orphans(table_path, adapter, delete=False)`
 

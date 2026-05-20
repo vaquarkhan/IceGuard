@@ -584,7 +584,8 @@ def handler(event, context):
         iceguard.write_dataframe(
             writer,
             df,
-            TABLE,
+            path=TABLE if TABLE.startswith("s3://") else None,
+            table_identifier=TABLE if not TABLE.startswith("s3://") else None,
             write_format="iceberg",
             write_mode="append",
         )
