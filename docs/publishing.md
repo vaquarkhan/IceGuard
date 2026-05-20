@@ -30,6 +30,19 @@ twine check dist/*
 twine upload dist/*
 ```
 
+## Docker image (GHCR)
+
+Workflow `.github/workflows/publish-docker.yml` pushes to **`ghcr.io/vaquarkhan/iceguard`** on each GitHub Release (or manual dispatch).
+
+| Item | Value |
+|------|--------|
+| Registry | `ghcr.io` |
+| Image | `vaquarkhan/iceguard` |
+| Tags | `X.Y.Z`, `latest` |
+| Base | `public.ecr.aws/lambda/python:3.12` + Java 17 + `iceguard[spark,iceberg,otel]` |
+
+See [docker.md](docker.md) for pull and Lambda usage.
+
 ## Package contents
 
 The published wheel contains **only** `iceguard` (under `src/iceguard/`). Tests, Terraform, and examples stay on GitHub, not on PyPI.

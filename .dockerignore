@@ -1,0 +1,16 @@
+.git
+.github
+.pytest_cache
+.coverage
+htmlcov
+dist
+*.egg-info
+tests
+terraform
+benchmarks
+validation
+**/__pycache__
+**/*.pyc
+.env
+*.md
+!README.md

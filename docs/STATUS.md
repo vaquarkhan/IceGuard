@@ -27,6 +27,7 @@ Current version in `pyproject.toml`: **1.0.0**.
 | Tests | 141+ unit/integration/chaos tests (AWS e2e optional) |
 | Docs | [API.md](API.md), architecture, installation, terraform |
 | **PyPI** | **Published** via trusted publishing on GitHub Release `v1.0.0` |
+| **Docker (GHCR)** | `ghcr.io/vaquarkhan/iceguard` — see [docker.md](docker.md) |
 
 ---
 
@@ -83,3 +84,4 @@ iceguard orphans scan --help
 | `pyproject.toml` | `1.0.0` |
 | Git tag | `v1.0.0` |
 | PyPI | `iceguard==1.0.0` |
+| Docker | `ghcr.io/vaquarkhan/iceguard:1.0.0` |

@@ -27,6 +27,24 @@ pip install "git+https://github.com/vaquarkhan/IceGuard.git@v1.0.0#egg=iceguard[
 | `otel` | OpenTelemetry API/SDK |
 | `dev` | pytest, hypothesis, coverage |
 
+## Docker (GHCR)
+
+Pre-built Lambda + PySpark image (see [docker.md](docker.md)):
+
+```bash
+docker pull ghcr.io/vaquarkhan/iceguard:1.0.0
+```
+
+```dockerfile
+FROM ghcr.io/vaquarkhan/iceguard:1.0.0
+COPY my_handler.py ${LAMBDA_TASK_ROOT}/
+CMD ["my_handler.lambda_handler"]
+```
+
+Package page: https://github.com/vaquarkhan/IceGuard/pkgs/container/iceguard
+
 ## Lambda deployment
 
-Package `iceguard` into a Lambda layer (`pip install iceguard -t python/`). For Spark, add JVM + PySpark in a separate layer or container image.
+**Option A — container image (recommended for Spark):** use `ghcr.io/vaquarkhan/iceguard` as in [docker.md](docker.md).
+
+**Option B — layers:** package `iceguard` into a Lambda layer (`pip install iceguard -t python/`). For Spark, add JVM + PySpark in a separate layer or your own container image.

@@ -7,8 +7,11 @@
 [![PyPI downloads (week)](https://img.shields.io/pypi/dw/iceguard)](https://pypi.org/project/iceguard/)
 [![Python](https://img.shields.io/pypi/pyversions/iceguard)](https://pypi.org/project/iceguard/)
 [![License](https://img.shields.io/pypi/l/iceguard)](https://pypi.org/project/iceguard/)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fvaquarkhan%2Ficeguard-blue)](https://github.com/vaquarkhan/IceGuard/pkgs/container/iceguard)
 
 **Published on PyPI:** [pypi.org/project/iceguard](https://pypi.org/project/iceguard/) · **Download stats:** [pepy.tech/project/iceguard](https://pepy.tech/project/iceguard) (aggregated; PyPI does not expose per-version counts in the API)
+
+**Docker (GHCR):** [ghcr.io/vaquarkhan/iceguard](https://github.com/vaquarkhan/IceGuard/pkgs/container/iceguard) — Lambda Python 3.12 + Java + PySpark + IceGuard. See [docs/docker.md](docs/docker.md).
 
 **Reliability library for Spark-on-AWS-Lambda (SoAL) lakehouse writes.** Chunked writes with timeout rollback, S3 checkpoints, orphan cleanup, and optional CloudWatch or OpenTelemetry metrics.
 
@@ -34,6 +37,23 @@ pip install "git+https://github.com/vaquarkhan/IceGuard.git@v1.0.0"
 ```
 
 Extras: `[spark]`, `[iceberg]`, `[hudi]`, `[otel]`, `[dev]`
+
+## Docker
+
+```bash
+docker pull ghcr.io/vaquarkhan/iceguard:1.0.0
+docker pull ghcr.io/vaquarkhan/iceguard:latest
+```
+
+Extend for your Lambda function:
+
+```dockerfile
+FROM ghcr.io/vaquarkhan/iceguard:1.0.0
+COPY my_handler.py ${LAMBDA_TASK_ROOT}/
+CMD ["my_handler.lambda_handler"]
+```
+
+Details: [docs/docker.md](docs/docker.md)
 
 ## Quick start
 
@@ -83,6 +103,7 @@ See [docs/STATUS.md](docs/STATUS.md) for capability checklist. **v1.0.0** is pub
 - [Terraform](docs/terraform.md)
 - [Formal verification](docs/formal-verification.md)
 - [Publishing](docs/publishing.md)
+- [Docker image](docs/docker.md)
 
 ## License
 
