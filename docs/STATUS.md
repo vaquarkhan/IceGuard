@@ -1,7 +1,9 @@
-# IceGuard release status (v0.2.3)
+# IceGuard release status (v1.0.0)
 
 Public summary of what is **done**, **partial**, or **not applicable**.  
-Current version in `pyproject.toml`: **0.2.3**.
+Current version in `pyproject.toml`: **1.0.0**.
+
+**PyPI:** https://pypi.org/project/iceguard/ · **Stats:** https://pepy.tech/project/iceguard
 
 ---
 
@@ -24,6 +26,7 @@ Current version in `pyproject.toml`: **0.2.3**.
 | CI | GitHub Actions, Python **3.9–3.13** |
 | Tests | 141+ unit/integration/chaos tests (AWS e2e optional) |
 | Docs | [API.md](API.md), architecture, installation, terraform |
+| **PyPI** | **Published** via trusted publishing on GitHub Release `v1.0.0` |
 
 ---
 
@@ -31,7 +34,6 @@ Current version in `pyproject.toml`: **0.2.3**.
 
 | Item | Status | What remains |
 |------|--------|----------------|
-| **PyPI publish** | Not on PyPI yet | Manual steps below (or GitHub Release + `PYPI_API_TOKEN`) |
 | **Live E2E** | Code + `pytest -m aws` | Run in your AWS account with `ICEGUARD_AWS_E2E=1` |
 | **PySpark + Iceberg live** | Fault-injection + optional spark test | Full live Iceberg table test in your VPC/catalog |
 | **Formal verification** | TLA+ sketch in docs | Machine-checked TLA+ model (optional) |
@@ -55,75 +57,21 @@ Not included in the wheel: `tests/`, `terraform/`, `examples/`, `benchmarks/`, i
 
 ---
 
-## Manual PyPI publish (v0.2.3)
+## PyPI publish (automated)
 
-### 1. Prerequisites
+Releases use **trusted publishing** — see [publishing.md](publishing.md).
 
-- PyPI account: https://pypi.org/account/register/
-- API token: https://pypi.org/manage/account/token/ (scope: entire account or project `iceguard`)
-- Local tools: `pip install build twine`
+1. Bump `version` in `pyproject.toml`.
+2. Push to `main`.
+3. Create GitHub Release tag `vX.Y.Z` (e.g. `v1.0.0`) → `.github/workflows/publish-pypi.yml` uploads to PyPI.
 
-### 2. Verify before upload
-
-```bash
-cd /path/to/IceGuard
-pip install -e ".[dev]"
-pytest tests -q -m "not aws"
-python validation/run_all.py
-python -m build
-twine check dist/*
-```
-
-You should see `iceguard-0.2.3-py3-none-any.whl` and `iceguard-0.2.3.tar.gz`.
-
-### 3. Upload to TestPyPI (recommended first)
+### Verify install
 
 ```bash
-twine upload --repository testpypi dist/*
-# Install test:
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ iceguard==0.2.3
-```
-
-### 4. Upload to PyPI (production)
-
-```bash
-twine upload dist/*
-```
-
-Or set token once (do not commit):
-
-```bash
-# PowerShell
-$env:TWINE_USERNAME = "__token__"
-$env:TWINE_PASSWORD = "pypi-AgEIcHlwaS5vcmcCJ..."   # your API token
-
-twine upload dist/*
-```
-
-### 5. Verify production install
-
-```bash
-pip install iceguard==0.2.3
-pip install "iceguard[spark,iceberg,otel]==0.2.3"
+pip install iceguard==1.0.0
+pip install "iceguard[spark,iceberg,otel]==1.0.0"
 python -c "import iceguard; print(iceguard.__version__)"
 iceguard orphans scan --help
-```
-
-### 6. Git tag (match version)
-
-```bash
-git tag v0.2.3
-git push origin v0.2.3
-```
-
-Optional: create a GitHub Release from tag `v0.2.3` to trigger `.github/workflows/publish-pypi.yml` if `PYPI_API_TOKEN` is set in repo secrets.
-
-### 7. After publish — update README install line
-
-Users can use:
-
-```bash
-pip install iceguard
 ```
 
 ---
@@ -132,6 +80,6 @@ pip install iceguard
 
 | File | Version |
 |------|---------|
-| `pyproject.toml` | `0.2.3` |
-| Git tag | `v0.2.3` |
-| PyPI | `iceguard==0.2.3` (after upload) |
+| `pyproject.toml` | `1.0.0` |
+| Git tag | `v1.0.0` |
+| PyPI | `iceguard==1.0.0` |

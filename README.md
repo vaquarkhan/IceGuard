@@ -2,6 +2,14 @@
 
 # IceGuard
 
+[![PyPI](https://img.shields.io/pypi/v/iceguard)](https://pypi.org/project/iceguard/)
+[![PyPI downloads (month)](https://img.shields.io/pypi/dm/iceguard)](https://pypi.org/project/iceguard/)
+[![PyPI downloads (week)](https://img.shields.io/pypi/dw/iceguard)](https://pypi.org/project/iceguard/)
+[![Python](https://img.shields.io/pypi/pyversions/iceguard)](https://pypi.org/project/iceguard/)
+[![License](https://img.shields.io/pypi/l/iceguard)](https://pypi.org/project/iceguard/)
+
+**Published on PyPI:** [pypi.org/project/iceguard](https://pypi.org/project/iceguard/) · **Download stats:** [pepy.tech/project/iceguard](https://pepy.tech/project/iceguard) (aggregated; PyPI does not expose per-version counts in the API)
+
 **Reliability library for Spark-on-AWS-Lambda (SoAL) lakehouse writes.** Chunked writes with timeout rollback, S3 checkpoints, orphan cleanup, and optional CloudWatch or OpenTelemetry metrics.
 
 | Capability | Out of the box | You provide |
@@ -16,11 +24,13 @@
 ## Install
 
 ```bash
-# After PyPI publish (see docs/STATUS.md):
 pip install iceguard
 
-# From GitHub until then:
-pip install "git+https://github.com/vaquarkhan/IceGuard.git@v0.2.2"
+# With optional extras
+pip install "iceguard[spark,iceberg,hudi,otel]==1.0.0"
+
+# From source (specific tag)
+pip install "git+https://github.com/vaquarkhan/IceGuard.git@v1.0.0"
 ```
 
 Extras: `[spark]`, `[iceberg]`, `[hudi]`, `[otel]`, `[dev]`
@@ -61,9 +71,9 @@ pytest tests --cov=iceguard
 python validation/run_all.py
 ```
 
-## Release status and PyPI
+## Release status
 
-See [docs/STATUS.md](docs/STATUS.md) for **done / partial** checklist and **manual PyPI publish** steps (v0.2.2).
+See [docs/STATUS.md](docs/STATUS.md) for capability checklist. **v1.0.0** is published via GitHub Actions trusted publishing (OIDC) on release tags.
 
 ## Documentation
 

@@ -23,5 +23,5 @@ jobs:
           python -m build
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+        # Uses PyPI trusted publishing (OIDC). No PYPI_API_TOKEN secret required.
+        # Configure publisher at https://pypi.org/manage/project/iceguard/settings/publishing/

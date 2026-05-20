@@ -1,17 +1,19 @@
 # Installation
 
-## From PyPI (recommended after first release)
+## From PyPI (recommended)
+
+https://pypi.org/project/iceguard/
 
 ```bash
 pip install iceguard
-pip install "iceguard[spark,iceberg,otel]"
+pip install "iceguard[spark,iceberg,otel]==1.0.0"
 ```
 
 ## From GitHub
 
 ```bash
-pip install "git+https://github.com/vaquarkhan/IceGuard.git@v0.2.0"
-pip install "git+https://github.com/vaquarkhan/IceGuard.git@v0.2.0#egg=iceguard[spark,iceberg,hudi,otel,dev]"
+pip install "git+https://github.com/vaquarkhan/IceGuard.git@v1.0.0"
+pip install "git+https://github.com/vaquarkhan/IceGuard.git@v1.0.0#egg=iceguard[spark,iceberg,hudi,otel,dev]"
 ```
 
 ## Extras

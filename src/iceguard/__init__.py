@@ -39,7 +39,7 @@ try:
 
     __version__ = _pkg_version("iceguard")
 except Exception:
-    __version__ = "0.2.0"
+    __version__ = "1.0.0"
 
 
 def protect(
