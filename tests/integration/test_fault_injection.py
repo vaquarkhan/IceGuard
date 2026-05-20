@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -58,6 +60,10 @@ def test_chunked_write_rollback_deletes_tracked_paths():
 
 
 @pytest.mark.spark
+@pytest.mark.skipif(
+    sys.platform == "win32" and not os.environ.get("HADOOP_HOME"),
+    reason="PySpark on Windows requires HADOOP_HOME (CI uses Linux)",
+)
 def test_pyspark_write_dataframe_respects_checkpoint_interval():
     """End-to-end with local Spark when pyspark is installed."""
     pytest.importorskip("pyspark")
@@ -103,7 +109,7 @@ def test_pyspark_write_dataframe_respects_checkpoint_interval():
                 df,
                 "file:///tmp/iceguard-fault-table",
                 write_format="parquet",
-                write_mode="overwrite",
+                write_mode="append",
             )
         assert len(chunk_ranges) >= 2, "dataframe should split into multiple chunks"
     finally:

@@ -25,6 +25,9 @@ def write_dataframe(
     Requires PySpark on the classpath. Each chunk calls ``DataFrame.write`` so the
     watchdog can interrupt between batches (unlike one blocking ``save()``).
 
+    Only ``write_mode="append"`` is supported. ``overwrite`` would replace prior
+    batches at the same path, so only the last chunk would remain.
+
     Args:
         writer: Active SafeWriter from ``iceguard.protect()`` context.
         df: ``pyspark.sql.DataFrame`` to write.
@@ -44,6 +47,14 @@ def write_dataframe(
             "write_dataframe requires PySpark. Install pyspark in your Lambda image."
         ) from e
 
+    mode = str(write_mode).strip().lower()
+    if mode != "append":
+        raise ValueError(
+            f"write_dataframe only supports write_mode='append' for chunked writes "
+            f"(each batch writes a slice of rows). Got {write_mode!r}; 'overwrite' would "
+            f"replace earlier batches at {path!r} and leave only the last chunk visible."
+        )
+
     opts = write_options or {}
     w = Window.orderBy(F.monotonically_increasing_id())
     indexed = df.withColumn(row_id_column, F.row_number().over(w))
@@ -55,7 +66,7 @@ def write_dataframe(
         part = indexed.filter(
             (F.col(row_id_column) > start) & (F.col(row_id_column) <= end)
         ).drop(row_id_column)
-        writer_api = part.write.format(write_format).mode(write_mode)
+        writer_api = part.write.format(write_format).mode("append")
         if opts:
             writer_api = writer_api.options(**opts)
         writer_api.save(path)

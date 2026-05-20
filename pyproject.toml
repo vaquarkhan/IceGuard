@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iceguard"
-version = "0.2.2"
+version = "0.2.3"
 description = "Reliability library for Spark-on-AWS-Lambda lakehouse writes with timeout rollback, checkpoints, and orphan cleanup."
 readme = "README.md"
 license = "MIT"

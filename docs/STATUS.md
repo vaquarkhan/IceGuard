@@ -1,7 +1,7 @@
-# IceGuard release status (v0.2.2)
+# IceGuard release status (v0.2.3)
 
 Public summary of what is **done**, **partial**, or **not applicable**.  
-Current version in `pyproject.toml`: **0.2.2**.
+Current version in `pyproject.toml`: **0.2.3**.
 
 ---
 
@@ -55,7 +55,7 @@ Not included in the wheel: `tests/`, `terraform/`, `examples/`, `benchmarks/`, i
 
 ---
 
-## Manual PyPI publish (v0.2.2)
+## Manual PyPI publish (v0.2.3)
 
 ### 1. Prerequisites
 
@@ -74,14 +74,14 @@ python -m build
 twine check dist/*
 ```
 
-You should see `iceguard-0.2.2-py3-none-any.whl` and `iceguard-0.2.2.tar.gz`.
+You should see `iceguard-0.2.3-py3-none-any.whl` and `iceguard-0.2.3.tar.gz`.
 
 ### 3. Upload to TestPyPI (recommended first)
 
 ```bash
 twine upload --repository testpypi dist/*
 # Install test:
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ iceguard==0.2.2
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ iceguard==0.2.3
 ```
 
 ### 4. Upload to PyPI (production)
@@ -103,8 +103,8 @@ twine upload dist/*
 ### 5. Verify production install
 
 ```bash
-pip install iceguard==0.2.2
-pip install "iceguard[spark,iceberg,otel]==0.2.2"
+pip install iceguard==0.2.3
+pip install "iceguard[spark,iceberg,otel]==0.2.3"
 python -c "import iceguard; print(iceguard.__version__)"
 iceguard orphans scan --help
 ```
@@ -112,11 +112,11 @@ iceguard orphans scan --help
 ### 6. Git tag (match version)
 
 ```bash
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.2.3
+git push origin v0.2.3
 ```
 
-Optional: create a GitHub Release from tag `v0.2.2` to trigger `.github/workflows/publish-pypi.yml` if `PYPI_API_TOKEN` is set in repo secrets.
+Optional: create a GitHub Release from tag `v0.2.3` to trigger `.github/workflows/publish-pypi.yml` if `PYPI_API_TOKEN` is set in repo secrets.
 
 ### 7. After publish — update README install line
 
@@ -132,6 +132,6 @@ pip install iceguard
 
 | File | Version |
 |------|---------|
-| `pyproject.toml` | `0.2.2` |
-| Git tag | `v0.2.2` |
-| PyPI | `iceguard==0.2.2` (after upload) |
+| `pyproject.toml` | `0.2.3` |
+| Git tag | `v0.2.3` |
+| PyPI | `iceguard==0.2.3` (after upload) |
