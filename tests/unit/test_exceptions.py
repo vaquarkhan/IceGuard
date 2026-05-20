@@ -177,12 +177,16 @@ class TestTableFormat:
     def test_delta_value(self) -> None:
         assert TableFormat.DELTA.value == "delta"
 
-    def test_has_exactly_two_members(self) -> None:
-        assert len(TableFormat) == 2
+    def test_hudi_value(self) -> None:
+        assert TableFormat.HUDI.value == "hudi"
+
+    def test_has_three_formats(self) -> None:
+        assert len(TableFormat) == 3
 
     def test_constructable_from_string(self) -> None:
         assert TableFormat("iceberg") == TableFormat.ICEBERG
         assert TableFormat("delta") == TableFormat.DELTA
+        assert TableFormat("hudi") == TableFormat.HUDI
 
     def test_invalid_format_raises_value_error(self) -> None:
         with pytest.raises(ValueError):

@@ -30,7 +30,7 @@ def test_protect_defaults():
 
 def test_protect_invalid_format():
     with pytest.raises(iceguard.IceGuardConfigError):
-        iceguard.protect(_ctx(), table_format="hudi")
+        iceguard.protect(_ctx(), table_format="parquet")
 
 
 def test_public_symbols_importable():

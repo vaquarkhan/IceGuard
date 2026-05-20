@@ -1,0 +1,11 @@
+# Copy to backend.tf and set your state bucket + lock table.
+
+terraform {
+  backend "s3" {
+    bucket         = "YOUR-TF-STATE-BUCKET"
+    key            = "iceguard/prod/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}

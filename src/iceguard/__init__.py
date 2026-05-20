@@ -6,13 +6,16 @@ from typing import Any, Optional, Union
 
 from iceguard.adapters import (
     DeltaLakeAdapter,
+    HudiAdapter,
     IcebergAdapter,
     TableFormatAdapter,
     delta_adapter,
+    hudi_adapter,
     iceberg_adapter,
 )
 from iceguard.checkpoint_store import CheckpointStore
 from iceguard.config import IceGuardConfig
+from iceguard.durable import DurableCheckpointBridge
 from iceguard.enums import TableFormat
 from iceguard.exceptions import (
     CheckpointCorruptionError,
@@ -33,7 +36,7 @@ try:
 
     __version__ = _pkg_version("iceguard")
 except Exception:
-    __version__ = "0.1.2"
+    __version__ = "0.2.0"
 
 
 def protect(
@@ -47,23 +50,19 @@ def protect(
     orphan_retention_hours: int = 72,
     orphan_batch_size: int = 1000,
     enable_cloudwatch_metrics: bool = False,
+    enable_opentelemetry_metrics: bool = False,
     *,
     catalog: Any = None,
     delta_log: Any = None,
+    hudi_commit_client: Any = None,
     table_identifier: Optional[str] = None,
     adapter: Optional[TableFormatAdapter] = None,
+    durable_context: Optional[Any] = None,
 ) -> SafeWriter:
     """Return a configured :class:`SafeWriter` for chunked writes under Lambda protection.
 
     Use ``writer.write(...)`` or :func:`write_dataframe` for Spark. A bare
     ``df.write.save()`` inside this context is **not** protected.
-
-    Args:
-        catalog: Optional Iceberg catalog with ``abort_transaction`` / ``delete_files``.
-        table_identifier: PyIceberg identifier (e.g. ``"db.table"``) for committed-file listing.
-        delta_log: Optional Delta log handle with the same methods.
-        adapter: Optional pre-built adapter (overrides catalog/delta_log).
-        coordinator_id: Prefix for idempotency keys in multi-Lambda coordinated runs.
     """
     if isinstance(table_format, TableFormat):
         tf_enum = table_format
@@ -99,8 +98,14 @@ def protect(
     if adapter is None:
         if tf_enum == TableFormat.DELTA:
             adapter = DeltaLakeAdapter(log=delta_log)
+        elif tf_enum == TableFormat.HUDI:
+            adapter = HudiAdapter(commit_client=hudi_commit_client)
         else:
             adapter = IcebergAdapter(catalog=catalog, table_identifier=table_identifier)
+
+    bridge = None
+    if durable_context is not None and store is not None:
+        bridge = DurableCheckpointBridge(store, durable_context)
 
     return SafeWriter(
         lambda_context,
@@ -108,7 +113,9 @@ def protect(
         adapter,
         idempotency_key=resolved_key,
         checkpoint_store=store,
+        durable_bridge=bridge,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+        enable_opentelemetry_metrics=enable_opentelemetry_metrics,
     )
 
 
@@ -122,10 +129,7 @@ def scan_orphans(
     metrics_emitter: Optional[Any] = None,
     s3_client: Optional[Any] = None,
 ) -> Union[ScanResult, tuple[ScanResult, DeleteResult]]:
-    """Scan (and optionally delete) orphan Parquet files under ``table_path``.
-
-    For ``s3://`` paths, listing and deletion use boto3 by default.
-    """
+    """Scan (and optionally delete) orphan Parquet files under ``table_path``."""
     scanner = OrphanScanner(
         adapter,
         retention_hours=retention_hours,
@@ -149,8 +153,11 @@ __all__ = [
     "TableFormat",
     "IcebergAdapter",
     "DeltaLakeAdapter",
+    "HudiAdapter",
     "iceberg_adapter",
     "delta_adapter",
+    "hudi_adapter",
+    "DurableCheckpointBridge",
     "OrphanScanner",
     "ScanResult",
     "DeleteResult",

@@ -11,6 +11,7 @@ from typing import Any, Callable, List, Optional
 
 from iceguard.adapters import TableFormatAdapter
 from iceguard.checkpoint_store import CheckpointStore
+from iceguard.durable import DurableCheckpointBridge
 from iceguard.config import IceGuardConfig
 from iceguard.exceptions import (
     IceGuardContextError,
@@ -41,8 +42,10 @@ class SafeWriter:
         idempotency_key: Optional[str] = None,
         table_path: str = "",
         checkpoint_store: Optional[CheckpointStore] = None,
+        durable_bridge: Optional[DurableCheckpointBridge] = None,
         metrics_emitter: Optional[MetricsEmitterProtocol] = None,
         enable_cloudwatch_metrics: bool = False,
+        enable_opentelemetry_metrics: bool = False,
     ) -> None:
         self._ctx = lambda_context
         self._config = config
@@ -50,8 +53,13 @@ class SafeWriter:
         self._idempotency_key = idempotency_key
         self._table_path = table_path
         self._store = checkpoint_store
+        self._durable_bridge = durable_bridge
         if metrics_emitter is not None:
             self._metrics: MetricsEmitterProtocol = metrics_emitter
+        elif enable_opentelemetry_metrics:
+            from iceguard.otel import OpenTelemetryMetricsEmitter
+
+            self._metrics = OpenTelemetryMetricsEmitter()
         elif enable_cloudwatch_metrics:
             self._metrics = BackgroundMetricsEmitter(MetricsEmitter())
         else:
@@ -98,8 +106,12 @@ class SafeWriter:
         )
 
         key = self._resolve_idempotency_key()
-        if self._store is not None:
-            loaded = self._store.load(key)
+        if self._store is not None or self._durable_bridge is not None:
+            loaded = None
+            if self._durable_bridge is not None:
+                loaded = self._durable_bridge.load(key)
+            elif self._store is not None:
+                loaded = self._store.load(key)
             if loaded is not None:
                 self._checkpoint = loaded
                 self._resume_offset = loaded.record_offset
@@ -149,7 +161,11 @@ class SafeWriter:
             lambda_function_name=self._function_name,
             lambda_request_id=str(getattr(self._ctx, "aws_request_id", "")),
         )
-        self._store.save(self._resolve_idempotency_key(), cp)
+        key = self._resolve_idempotency_key()
+        if self._durable_bridge is not None:
+            self._durable_bridge.save(key, cp)
+        elif self._store is not None:
+            self._store.save(key, cp)
         self._checkpoint = cp
 
     def _handle_rollback(self, path: str, remaining_ms: int) -> None:

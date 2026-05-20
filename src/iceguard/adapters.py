@@ -36,6 +36,20 @@ def delta_adapter(
     return DeltaLakeAdapter(log=log, committed_files=committed_files, s3_client=s3_client)
 
 
+def hudi_adapter(
+    *,
+    commit_client: Any = None,
+    committed_files: Optional[Set[str]] = None,
+    s3_client: Any = None,
+) -> "HudiAdapter":
+    """Build a :class:`HudiAdapter` (wire Spark Hudi commit client when available)."""
+    return HudiAdapter(
+        commit_client=commit_client,
+        committed_files=committed_files,
+        s3_client=s3_client,
+    )
+
+
 def _delete_paths_on_s3(file_paths: List[str], *, s3_client: Any = None) -> None:
     for path in file_paths:
         if not path.startswith("s3://"):
@@ -166,3 +180,49 @@ class DeltaLakeAdapter:
     def get_table_metadata_path(self, table_path: str) -> str:
         root = table_path.rstrip("/")
         return f"{root}/_delta_log"
+
+
+class HudiAdapter:
+    """Apache Hudi-oriented adapter."""
+
+    def __init__(
+        self,
+        *,
+        committed_files: Optional[Set[str]] = None,
+        commit_client: Any = None,
+        s3_client: Any = None,
+    ) -> None:
+        self._committed: Set[str] = set(committed_files or ())
+        self._commit_client = commit_client
+        self._s3_client = s3_client
+        self._deleted: List[str] = []
+        self._active_transaction: Any = None
+
+    @property
+    def deleted_paths(self) -> List[str]:
+        return list(self._deleted)
+
+    def abort_transaction(self, transaction: Any) -> None:
+        if self._commit_client is not None and hasattr(
+            self._commit_client, "abort_transaction"
+        ):
+            self._commit_client.abort_transaction(transaction)
+        self._active_transaction = None
+
+    def delete_uncommitted_files(self, file_paths: List[str]) -> None:
+        if self._commit_client is not None and hasattr(self._commit_client, "delete_files"):
+            self._commit_client.delete_files(file_paths)
+        else:
+            _delete_paths_on_s3(file_paths, s3_client=self._s3_client)
+        self._deleted.extend(file_paths)
+
+    def list_committed_files(self, table_path: str) -> Set[str]:
+        if self._commit_client is not None and hasattr(
+            self._commit_client, "list_committed_files"
+        ):
+            return set(self._commit_client.list_committed_files(table_path))
+        return set(self._committed)
+
+    def get_table_metadata_path(self, table_path: str) -> str:
+        root = table_path.rstrip("/")
+        return f"{root}/.hoodie"

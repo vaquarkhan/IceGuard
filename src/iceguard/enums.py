@@ -16,6 +16,7 @@ class TableFormat(Enum):
 
     ICEBERG = "iceberg"
     DELTA = "delta"
+    HUDI = "hudi"
 
 
 class TransactionStatus(Enum):

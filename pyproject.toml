@@ -4,19 +4,30 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iceguard"
-version = "0.1.3"
-description = "Reliability library for Spark-on-AWS-Lambda writes — prevents silent data loss with timeout-aware rollback, resumable checkpointing, and multi-Lambda coordination."
+version = "0.2.0"
+description = "Reliability library for Spark-on-AWS-Lambda lakehouse writes with timeout rollback, checkpoints, and orphan cleanup."
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.9,<3.14"
 authors = [
     { name = "IceGuard Contributors" },
 ]
-keywords = ["spark", "aws", "lambda", "iceberg", "delta-lake", "reliability"]
+keywords = [
+    "spark",
+    "aws",
+    "lambda",
+    "iceberg",
+    "delta-lake",
+    "hudi",
+    "reliability",
+    "opentelemetry",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -24,38 +35,70 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
 ]
-
-[project.urls]
-Homepage = "https://github.com/vaquarkhan/IceGuard"
-Repository = "https://github.com/vaquarkhan/IceGuard"
-
 dependencies = [
     "boto3>=1.28.0",
 ]
 
 [project.optional-dependencies]
-spark = [
-    "pyspark>=3.4.0",
-]
-iceberg = [
-    "pyiceberg>=0.6.0",
-]
-delta = [
-    "delta-spark>=3.0.0",
+spark = ["pyspark>=3.4.0"]
+iceberg = ["pyiceberg>=0.6.0"]
+delta = ["delta-spark>=3.0.0"]
+hudi = ["pyspark>=3.4.0"]
+otel = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
 ]
 dev = [
     "hypothesis>=6.82.0",
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
 ]
+all = [
+    "pyspark>=3.4.0",
+    "pyiceberg>=0.6.0",
+    "delta-spark>=3.0.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "hypothesis>=6.82.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/vaquarkhan/IceGuard"
+Documentation = "https://github.com/vaquarkhan/IceGuard/tree/main/docs"
+Repository = "https://github.com/vaquarkhan/IceGuard"
+Issues = "https://github.com/vaquarkhan/IceGuard/issues"
+
+[project.scripts]
+iceguard = "iceguard.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/iceguard"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/README.md",
+    "/LICENSE",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "spark: requires PySpark (optional integration)",
+]
+
+[tool.coverage.run]
+source = ["iceguard"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 [tool.hatch.envs.default]
 features = ["dev"]

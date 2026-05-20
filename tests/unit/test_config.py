@@ -174,10 +174,13 @@ class TestErrorMessages:
 
     def test_table_format_error_message_lists_supported(self):
         with pytest.raises(IceGuardConfigError) as exc_info:
-            IceGuardConfig(table_format="hudi")  # type: ignore[arg-type]
+            IceGuardConfig(table_format="parquet")  # type: ignore[arg-type]
         msg = str(exc_info.value)
         assert "iceberg" in msg
         assert "delta" in msg
+        assert "iceberg" in msg
+        assert "delta" in msg
+        assert "hudi" in msg
 
     def test_orphan_batch_size_cannot_exceed_1000(self):
         with pytest.raises(IceGuardConfigError) as exc_info:

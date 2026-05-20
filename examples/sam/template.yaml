@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: IceGuard-protected Spark-on-Lambda sample (skeleton)
+
+Parameters:
+  CheckpointBucketName:
+    Type: String
+    Description: S3 bucket for IceGuard checkpoints (create via terraform/environments/dev)
+
+Globals:
+  Function:
+    Timeout: 900
+    MemorySize: 3008
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+
+Resources:
+  IceGuardWriterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: handler.lambda_handler
+      Description: Chunked lake write with IceGuard
+      Environment:
+        Variables:
+          ICEGUARD_CHECKPOINT_BUCKET: !Ref CheckpointBucketName
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref CheckpointBucketName
+      Layers:
+        - !Ref IceGuardDependenciesLayer
+
+  IceGuardDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: iceguard-deps
+      Description: iceguard + boto3 (add PySpark/Java in your account-specific layer)
+      ContentUri: layer/
+      CompatibleRuntimes:
+        - python3.12
+
+Outputs:
+  WriterFunctionArn:
+    Value: !GetAtt IceGuardWriterFunction.Arn

@@ -1,0 +1,30 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "properties": {
+        "title": "IceGuard write outcomes",
+        "metrics": [
+          ["iceguard", "WriteOutcome", "Outcome", "success"],
+          ["iceguard", "WriteOutcome", "Outcome", "rollback"]
+        ],
+        "period": 300,
+        "stat": "Sum",
+        "region": "us-east-1"
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "title": "Orphan scan",
+        "metrics": [
+          ["iceguard", "OrphanScanFound"],
+          ["iceguard", "OrphanScanDeleted"]
+        ],
+        "period": 300,
+        "stat": "Sum",
+        "region": "us-east-1"
+      }
+    }
+  ]
+}
