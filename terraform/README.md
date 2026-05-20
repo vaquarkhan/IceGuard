@@ -1,43 +1,46 @@
 # IceGuard Terraform
 
-Production-oriented, **modular** infrastructure for IceGuard on AWS Lambda.
+Production-grade **modular** infrastructure for IceGuard on AWS.
 
-## Layout
-
-```
-terraform/
-  modules/
-    checkpoint_bucket/     # S3 bucket for IceGuard checkpoints (versioned, encrypted)
-    lambda_iam/            # IAM role/policy for Lambda writers
-    cloudwatch_dashboard/  # Pre-built operational dashboard
-  environments/
-    dev/                   # Dev stack (calls modules)
-    prod/                  # Prod stack (stricter settings)
-```
-
-## Quick start (dev)
-
-```bash
-cd terraform/environments/dev
-terraform init
-terraform plan -var="project_name=iceguard-dev" -var="checkpoint_bucket_name=iceguard-dev-checkpoints-UNIQUE"
-terraform apply -var="project_name=iceguard-dev" -var="checkpoint_bucket_name=iceguard-dev-checkpoints-UNIQUE"
-```
-
-## Modules
+## Module catalog
 
 | Module | Purpose |
 |--------|---------|
-| `checkpoint_bucket` | Versioned S3, SSE-S3, public access block, lifecycle for old checkpoints |
-| `lambda_iam` | Least-privilege policy: S3 checkpoint RW, CloudWatch metrics, table data paths |
-| `cloudwatch_dashboard` | Widgets for WriteOutcome, NearMiss, OrphanScan, CheckpointResume |
+| [kms](modules/kms/) | CMK with rotation |
+| [checkpoint_bucket](modules/checkpoint_bucket/) | Versioned checkpoint store (SSE-KMS optional, logging, bucket policy) |
+| [data_lake_bucket](modules/data_lake_bucket/) | Lake data bucket with encryption |
+| [lambda_iam](modules/lambda_iam/) | Least-privilege Lambda role |
+| [lambda_layer](modules/lambda_layer/) | Published dependency layer from S3 zip |
+| [lambda_function](modules/lambda_function/) | Writer Lambda with IceGuard env vars |
+| [cloudwatch_dashboard](modules/cloudwatch_dashboard/) | Operations dashboard |
+| [cloudwatch_alarms](modules/cloudwatch_alarms/) | Rollback + near-miss alarms |
+| [iceguard_stack](modules/iceguard_stack/) | **Composition** of all modules |
 
-See [docs/terraform.md](../docs/terraform.md) for variable reference and production checklist.
+## Deploy (dev)
 
-## State
+```bash
+cd terraform/environments/dev
+cp terraform.tfvars.example terraform.tfvars
+# edit bucket names (globally unique)
+terraform init
+terraform plan
+terraform apply
+```
 
-Use a remote backend in production (S3 + DynamoDB lock). Example in `environments/prod/backend.tf.example`.
+## Deploy (prod)
 
-## CDK alternative
+```bash
+cd terraform/environments/prod
+# configure backend.tf from backend.tf.example
+terraform init
+terraform apply -var-file=prod.tfvars
+```
 
-See [examples/cdk](../examples/cdk/README.md) for an AWS CDK sample that composes the same resources.
+## Lambda artifacts
+
+1. `pip install iceguard -t build/python`
+2. Zip `build/python` → upload to S3 as layer artifact
+3. Zip `examples/sam/handler.py` + deps → function artifact
+4. Set `deploy_lambda = true` and artifact bucket/keys in tfvars
+
+See [docs/terraform.md](../docs/terraform.md).

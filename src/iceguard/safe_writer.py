@@ -148,7 +148,7 @@ class SafeWriter:
         return False
 
     def _persist_checkpoint(self, offset: int, path: str, manifest: List[FileEntry]) -> None:
-        if self._store is None:
+        if self._store is None and self._durable_bridge is None:
             return
         cp = CheckpointData(
             idempotency_key=self._resolve_idempotency_key(),
@@ -171,7 +171,7 @@ class SafeWriter:
     def _handle_rollback(self, path: str, remaining_ms: int) -> None:
         manifest_paths = [f.path for f in (self._checkpoint.file_manifest if self._checkpoint else [])]
         manifest_paths.extend(self._uncommitted_paths)
-        if self._store is not None:
+        if self._store is not None or self._durable_bridge is not None:
             try:
                 final = CheckpointData(
                     idempotency_key=self._resolve_idempotency_key(),
@@ -184,7 +184,11 @@ class SafeWriter:
                     lambda_function_name=self._function_name,
                     lambda_request_id=str(getattr(self._ctx, "aws_request_id", "")),
                 )
-                self._store.save(self._resolve_idempotency_key(), final)
+                key = self._resolve_idempotency_key()
+                if self._durable_bridge is not None:
+                    self._durable_bridge.save(key, final)
+                elif self._store is not None:
+                    self._store.save(key, final)
             except Exception as e:
                 logger.warning("Final checkpoint save failed: %s", e)
         try:
@@ -251,8 +255,11 @@ class SafeWriter:
         if self._watchdog is not None:
             self._watchdog.disarm()
 
+        key = self._resolve_idempotency_key()
         if self._store is not None:
-            self._store.delete(self._resolve_idempotency_key())
+            self._store.delete(key)
+        if self._durable_bridge is not None:
+            self._durable_bridge.clear_durable_checkpoint()
         self._metrics.emit_write_outcome(
             path, self._config.table_format.value, "success", self._function_name
         )

@@ -1,11 +1,23 @@
 output "checkpoint_bucket_name" {
-  value = module.checkpoint_bucket.bucket_id
+  value = module.iceguard.checkpoint_bucket_name
+}
+
+output "data_lake_bucket_arn" {
+  value = module.iceguard.data_lake_bucket_arn
 }
 
 output "lambda_role_arn" {
-  value = module.lambda_iam.role_arn
+  value = module.iceguard.lambda_role_arn
+}
+
+output "kms_key_arn" {
+  value = module.iceguard.kms_key_arn
 }
 
 output "cloudwatch_dashboard_name" {
-  value = module.cloudwatch_dashboard.dashboard_name
+  value = module.iceguard.dashboard_name
+}
+
+output "lambda_function_arn" {
+  value = module.iceguard.lambda_function_arn
 }

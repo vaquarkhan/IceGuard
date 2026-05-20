@@ -1,10 +1,10 @@
+variable "name_prefix" {
+  type = string
+}
+
 variable "aws_region" {
   type    = string
   default = "us-east-1"
-}
-
-variable "project_name" {
-  type = string
 }
 
 variable "checkpoint_bucket_name" {
@@ -12,11 +12,23 @@ variable "checkpoint_bucket_name" {
 }
 
 variable "data_lake_bucket_name" {
-  type = string
+  type    = string
+  default = null
+}
+
+variable "enable_kms" {
+  type    = bool
+  default = true
+}
+
+variable "enable_alarms" {
+  type    = bool
+  default = true
 }
 
 variable "sns_alert_topic_arn" {
-  type = string
+  type    = string
+  default = null
 }
 
 variable "deploy_lambda" {
@@ -37,4 +49,9 @@ variable "lambda_artifact_key" {
 variable "lambda_layer_artifact_key" {
   type    = string
   default = null
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
 }

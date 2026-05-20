@@ -175,6 +175,13 @@ class DeltaLakeAdapter:
     def list_committed_files(self, table_path: str) -> Set[str]:
         if self._log is not None and hasattr(self._log, "list_committed_files"):
             return set(self._log.list_committed_files(table_path))
+        if table_path.startswith("s3://"):
+            try:
+                from iceguard.format_metadata import delta_committed_paths_s3
+
+                return delta_committed_paths_s3(table_path, s3_client=self._s3_client)
+            except Exception as e:
+                logger.warning("Delta S3 metadata read failed: %s", e)
         return set(self._committed)
 
     def get_table_metadata_path(self, table_path: str) -> str:
@@ -221,6 +228,13 @@ class HudiAdapter:
             self._commit_client, "list_committed_files"
         ):
             return set(self._commit_client.list_committed_files(table_path))
+        if table_path.startswith("s3://"):
+            try:
+                from iceguard.format_metadata import hudi_committed_paths_s3
+
+                return hudi_committed_paths_s3(table_path, s3_client=self._s3_client)
+            except Exception as e:
+                logger.warning("Hudi S3 metadata read failed: %s", e)
         return set(self._committed)
 
     def get_table_metadata_path(self, table_path: str) -> str:

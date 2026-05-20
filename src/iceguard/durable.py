@@ -57,11 +57,22 @@ class DurableCheckpointBridge:
                 return None
             if isinstance(raw, bytes):
                 raw = raw.decode("utf-8")
-            if isinstance(raw, bytes):
-                return CheckpointData.from_json(raw.decode("utf-8"))
             if isinstance(raw, str):
                 return CheckpointData.from_json(raw)
             return CheckpointData.from_json(json.dumps(raw))
         except Exception as e:
             logger.warning("Durable checkpoint restore failed: %s", e)
             return None
+
+    def clear_durable_checkpoint(self) -> None:
+        """Clear durable execution checkpoint after successful write completion."""
+        if self._durable is None:
+            return
+        for method_name in ("clear_checkpoint", "reset_checkpoint", "checkpoint_reset"):
+            fn = getattr(self._durable, method_name, None)
+            if callable(fn):
+                try:
+                    fn()
+                except Exception as e:
+                    logger.warning("Durable checkpoint clear via %s failed: %s", method_name, e)
+                return

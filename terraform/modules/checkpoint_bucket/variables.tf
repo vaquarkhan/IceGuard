@@ -14,3 +14,21 @@ variable "noncurrent_version_expiration_days" {
   type        = number
   default     = 90
 }
+
+variable "kms_key_arn" {
+  description = "Optional KMS key ARN for bucket encryption"
+  type        = string
+  default     = null
+}
+
+variable "access_logs_bucket_id" {
+  description = "Optional S3 access logs target bucket id"
+  type        = string
+  default     = null
+}
+
+variable "allowed_role_arns" {
+  description = "IAM role ARNs allowed to access this bucket (bucket policy)"
+  type        = list(string)
+  default     = []
+}

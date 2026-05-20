@@ -1,0 +1,7 @@
+project_name           = "iceguard-dev"
+checkpoint_bucket_name = "iceguard-dev-checkpoints-UNIQUE-SUFFIX"
+data_lake_bucket_name  = "iceguard-dev-lake-UNIQUE-SUFFIX"
+aws_region             = "us-east-1"
+enable_kms             = true
+enable_alarms          = true
+deploy_lambda          = false

@@ -1,34 +1,27 @@
 # Terraform
 
-Modular stacks under `terraform/`:
+See [terraform/README.md](../terraform/README.md) for the full module catalog.
 
-## Modules
+## Modules (10)
 
-### `checkpoint_bucket`
-
-- Versioning enabled
-- SSE-S3 encryption
-- Public access blocked
-- Lifecycle rule for noncurrent versions
-
-### `lambda_iam`
-
-- Assume role for `lambda.amazonaws.com`
-- S3 RW on checkpoint bucket
-- Optional data bucket ARNs
-- `cloudwatch:PutMetricData` when metrics enabled
-- `AWSLambdaBasicExecutionRole` attached
-
-### `cloudwatch_dashboard`
-
-Dashboard widgets for `iceguard` namespace metrics.
+| Module | Description |
+|--------|-------------|
+| `kms` | CMK + alias + rotation |
+| `checkpoint_bucket` | Versioned checkpoints, KMS, logging, bucket policy |
+| `data_lake_bucket` | Lake data bucket |
+| `lambda_iam` | Writer role + policies |
+| `lambda_layer` | Layer from S3 artifact |
+| `lambda_function` | Lambda with IceGuard env vars |
+| `cloudwatch_dashboard` | Ops dashboard |
+| `cloudwatch_alarms` | Rollback / near-miss alarms |
+| `iceguard_stack` | **Composes all modules** |
 
 ## Environments
 
 | Env | Path | Notes |
 |-----|------|-------|
-| dev | `environments/dev` | Default tags, 90d noncurrent expiry |
-| prod | `environments/prod` | Requires `data_bucket_arns`, 30d expiry |
+| dev | `environments/dev` | `terraform.tfvars.example` included |
+| prod | `environments/prod` | Remote state example, SNS alarms |
 
 ## Production checklist
 

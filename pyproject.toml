@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iceguard"
-version = "0.2.0"
+version = "0.2.1"
 description = "Reliability library for Spark-on-AWS-Lambda lakehouse writes with timeout rollback, checkpoints, and orphan cleanup."
 readme = "README.md"
 license = "MIT"
@@ -45,7 +45,7 @@ dependencies = [
 spark = ["pyspark>=3.4.0"]
 iceberg = ["pyiceberg>=0.6.0"]
 delta = ["delta-spark>=3.0.0"]
-hudi = ["pyspark>=3.4.0"]
+hudi = ["pyspark>=3.4.0", "fastavro>=1.9.0"]
 otel = [
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
